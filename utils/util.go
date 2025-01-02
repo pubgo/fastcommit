@@ -39,9 +39,9 @@ func GetNextTag(pre string) *semver.Version {
 	var ver string
 	if curMaxVer != nil && curMaxVer.GreaterThan(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
-		ver = fmt.Sprintf("%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
+		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
-		ver = fmt.Sprintf("%s-alpha.1", maxVer.Core().String())
+		ver = fmt.Sprintf("v%s-alpha.1", maxVer.Core().String())
 	}
 	return assert.Exit1(semver.NewSemver(ver))
 }
