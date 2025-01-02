@@ -2,15 +2,16 @@ package bootstrap
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
-	"github.com/charmbracelet/x/term"
-	"github.com/pubgo/funk/pretty"
-	"github.com/sashabaranov/go-openai"
+	"log/slog"
 	"os"
 	"sort"
 
+	"github.com/adrg/xdg"
 	_ "github.com/adrg/xdg"
 	_ "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/dix/dix_internal"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
@@ -18,21 +19,36 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/config"
 	"github.com/pubgo/funk/env"
+	"github.com/pubgo/funk/pathutil"
 	"github.com/pubgo/funk/recovery"
 	"github.com/pubgo/funk/running"
 	"github.com/pubgo/funk/version"
 	"github.com/rs/zerolog"
+	"github.com/sashabaranov/go-openai"
 	_ "github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
 )
 
+var configPath = assert.Exit1(xdg.ConfigFile("fastcommit/config.yaml"))
+
+//go:embed default.yaml
+var defaultConfig []byte
+
 func Main() {
 	defer recovery.Exit()
+
+	slog.Info("config path", "path", configPath)
+	if pathutil.IsNotExist(configPath) {
+		assert.Must(os.WriteFile(configPath, defaultConfig, 0644))
+	}
+
+	config.SetConfigPath(configPath)
 
 	dix_internal.SetLogLevel(zerolog.InfoLevel)
 	var di = dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
 	di.Provide(config.Load[Config])
+	di.Provide(utils.NewOpenaiClient)
 
 	di.Inject(func(cmd []*cli.Command) {
 		app := &cli.Command{
@@ -70,38 +86,30 @@ func Main() {
 					return cli.ShowAppHelp(command)
 				}
 
-				fmt.Println(term.IsTerminal(os.Stdin.Fd()))
-
-				pp := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
-
-				repoPath, err := utils.AssertGitRepo()
-				fmt.Println("Git repository root:", repoPath, err)
-
-				//await execa('git', ['add', '--update']);
-				diff, err := utils.GetStagedDiff(nil)
-				if err != nil {
-					fmt.Println(err)
+				if !term.IsTerminal(os.Stdin.Fd()) {
 					return nil
 				}
 
-				if diff != nil {
-					fmt.Println("Staged files:", diff["files"])
-					//fmt.Println("Staged diff:", diff["diff"])
-					//fmt.Println(utils.GetDetectedMessage(diff["files"].([]string)))
-				}
+				generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 
-				var cfg = openai.DefaultConfig("sk-a6af4bae0ef441b299f4301c3feaedf4")
-				cfg.BaseURL = "https://api.deepseek.com/v1"
-				client := openai.NewClientWithConfig(cfg)
+				repoPath := assert.Must1(utils.AssertGitRepo())
+				slog.Info("Git repository root", "path", repoPath)
 
-				resp, err := client.CreateChatCompletion(
+				assert.Exit(utils.Shell("git", "add", "--update").Run())
+
+				diff := assert.Must1(utils.GetStagedDiff(nil))
+
+				client := dix.Inject(di, new(struct {
+					*utils.OpenaiClient
+				}))
+				resp, err := client.Client.CreateChatCompletion(
 					context.Background(),
 					openai.ChatCompletionRequest{
-						Model: "deepseek-chat",
+						Model: client.Cfg.Model,
 						Messages: []openai.ChatCompletionMessage{
 							{
 								Role:    openai.ChatMessageRoleSystem,
-								Content: pp,
+								Content: generatePrompt,
 							},
 							{
 								Role:    openai.ChatMessageRoleUser,
@@ -115,7 +123,13 @@ func Main() {
 					fmt.Printf("ChatCompletion error: %v\n", err)
 				}
 
-				pretty.Println(resp)
+				if len(resp.Choices) == 0 {
+					return nil
+				}
+
+				msg := resp.Choices[0].Message.Content
+				assert.Must(utils.Shell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)).Run())
+				assert.Must(utils.Shell("git", "push").Run())
 
 				return nil
 			},

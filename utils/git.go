@@ -2,9 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"github.com/pubgo/funk/errors"
+	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/pubgo/funk/errors"
 )
 
 // KnownError 是一个自定义错误类型
@@ -33,19 +36,12 @@ func ExcludeFromDiff(path string) string {
 	return fmt.Sprintf(":(exclude)%s", path)
 }
 
-// filesToExclude 是需要排除的文件列表
-var filesToExclude = []string{
-	//"package-lock.json",
-	//"pnpm-lock.yaml",
-}
-
 // GetStagedDiff 获取暂存区的差异
 func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 	diffCached := []string{"diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	fmt.Println(append(diffCached, append([]string{"--name-only"}, append(filesToExclude, excludeFiles...)...)...))
-	cmdFiles := exec.Command("git", append(diffCached, append([]string{"--name-only"}, append(filesToExclude, excludeFiles...)...)...)...)
+	cmdFiles := exec.Command("git", append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
 	filesOutput, err := cmdFiles.Output()
 	if err != nil {
 		return nil, errors.WrapCaller(err)
@@ -57,7 +53,7 @@ func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 	}
 
 	// 获取暂存区的完整差异
-	cmdDiff := exec.Command("git", append(diffCached, append(filesToExclude, excludeFiles...)...)...)
+	cmdDiff := exec.Command("git", append(diffCached, excludeFiles...)...)
 	diffOutput, err := cmdDiff.Output()
 	if err != nil {
 		return nil, err
@@ -77,4 +73,15 @@ func GetDetectedMessage(files []string) string {
 		pluralSuffix = "s"
 	}
 	return fmt.Sprintf("Detected %d staged file%s", fileCount, pluralSuffix)
+}
+
+func Shell(args ...string) *exec.Cmd {
+	shell := strings.Join(args, " ")
+	slog.Info(shell)
+	cmd := exec.Command("/bin/sh", "-c", shell)
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	return cmd
 }
