@@ -14,7 +14,7 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 			ver := utils.GetNextTag("alpha")
-			utils.GitTag(ver.String())
+			utils.GitTag(ver.Original())
 			return nil
 		},
 	}
