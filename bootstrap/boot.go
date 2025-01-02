@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/dix/dix_internal"
+	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
@@ -49,6 +50,7 @@ func Main() {
 	dix_internal.SetLogLevel(zerolog.InfoLevel)
 	var di = dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
+	di.Provide(tagcmd.New)
 	di.Provide(config.Load[Config])
 	di.Provide(utils.NewOpenaiClient)
 

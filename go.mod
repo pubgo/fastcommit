@@ -11,6 +11,7 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/sashabaranov/go-openai v1.36.1
 	github.com/urfave/cli/v3 v3.0.0-alpha9.0.20240717192922-127cf54fac9f
+	golang.org/x/mod v0.21.0
 )
 
 require (

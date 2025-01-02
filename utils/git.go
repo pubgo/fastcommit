@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 )
 
@@ -90,4 +91,9 @@ func ShellOutput(args ...string) ([]byte, error) {
 	cmd := Shell(args...)
 	cmd.Stdout = nil
 	return cmd.Output()
+}
+
+func GitTag(ver string) {
+	assert.Must(Shell("git", "tag", ver).Run())
+	assert.Must(Shell("git", "push", "origin", ver).Run())
 }

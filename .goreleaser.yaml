@@ -8,8 +8,14 @@ builds:
       - darwin
       - windows
     goarch:
+      - "386"
       - amd64
       - arm64
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: amd64
     ldflags:
       - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
       - -X 'github.com/pubgo/funk/version.project=fastcommit'
