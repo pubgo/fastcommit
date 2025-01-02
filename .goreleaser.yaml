@@ -1,0 +1,25 @@
+builds:
+  - main: ./main.go
+    id: fastcommit
+    binary: fastcommit
+    skip: false
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
+      - -X 'github.com/pubgo/funk/version.project=fastcommit'
+      - -X 'github.com/pubgo/funk/version.buildTime='{{ .CommitDate }}''
+      - -X 'github.com/pubgo/funk/version.commitID='{{ .ShortCommit }}''
+    flags:
+      - -trimpath
+      - -tags=releaser
+    mod_timestamp: '{{ .CommitTimestamp }}'
+archives:
+  - name_template: "{{ .Binary }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    format: binary
+report_sizes: true
