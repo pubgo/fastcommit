@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/pubgo/funk/errors"
 	"os/exec"
 	"strings"
 )
@@ -15,8 +16,8 @@ func (e *KnownError) Error() string {
 	return e.Message
 }
 
-// assertGitRepo 检查当前目录是否是 Git 仓库
-func assertGitRepo() (string, error) {
+// AssertGitRepo 检查当前目录是否是 Git 仓库
+func AssertGitRepo() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := cmd.Output()
 
@@ -27,27 +28,27 @@ func assertGitRepo() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// excludeFromDiff 生成 Git 排除路径的格式
-func excludeFromDiff(path string) string {
+// ExcludeFromDiff 生成 Git 排除路径的格式
+func ExcludeFromDiff(path string) string {
 	return fmt.Sprintf(":(exclude)%s", path)
 }
 
 // filesToExclude 是需要排除的文件列表
 var filesToExclude = []string{
-	"package-lock.json",
-	"pnpm-lock.yaml",
-	"*.lock", // yarn.lock, Cargo.lock, Gemfile.lock, Pipfile.lock, etc.
+	//"package-lock.json",
+	//"pnpm-lock.yaml",
 }
 
-// getStagedDiff 获取暂存区的差异
-func getStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
+// GetStagedDiff 获取暂存区的差异
+func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 	diffCached := []string{"diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
+	fmt.Println(append(diffCached, append([]string{"--name-only"}, append(filesToExclude, excludeFiles...)...)...))
 	cmdFiles := exec.Command("git", append(diffCached, append([]string{"--name-only"}, append(filesToExclude, excludeFiles...)...)...)...)
 	filesOutput, err := cmdFiles.Output()
 	if err != nil {
-		return nil, err
+		return nil, errors.WrapCaller(err)
 	}
 
 	files := strings.Split(strings.TrimSpace(string(filesOutput)), "\n")
@@ -68,33 +69,12 @@ func getStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 	}, nil
 }
 
-// getDetectedMessage 生成检测到的文件数量的消息
-func getDetectedMessage(files []string) string {
+// GetDetectedMessage 生成检测到的文件数量的消息
+func GetDetectedMessage(files []string) string {
 	fileCount := len(files)
 	pluralSuffix := ""
 	if fileCount > 1 {
 		pluralSuffix = "s"
 	}
 	return fmt.Sprintf("Detected %d staged file%s", fileCount, pluralSuffix)
-}
-
-func main() {
-	// 示例用法
-	repoPath, err := assertGitRepo()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Git repository root:", repoPath)
-
-	diff, err := getStagedDiff(nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if diff != nil {
-		fmt.Println("Staged files:", diff["files"])
-		fmt.Println("Staged diff:", diff["diff"])
-		fmt.Println(getDetectedMessage(diff["files"].([]string)))
-	}
 }

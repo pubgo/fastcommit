@@ -42,7 +42,7 @@ var commitTypes = map[CommitType]string{
 	EmptyCommitType:        "",
 }
 
-func generatePrompt(locale string, maxLength int, commitType CommitType) string {
+func GeneratePrompt(locale string, maxLength int, commitType CommitType) string {
 	promptParts := []string{
 		"Generate a concise git commit message written in present tense for the following code diff with the given specifications below:",
 		fmt.Sprintf("Message language: %s", locale),
@@ -61,10 +61,4 @@ func generatePrompt(locale string, maxLength int, commitType CommitType) string 
 	}
 
 	return strings.Join(filteredParts, "\n")
-}
-
-func main() {
-	// Example usage
-	prompt := generatePrompt("en", 72, ConventionalCommitType)
-	fmt.Println(prompt)
 }
