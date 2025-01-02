@@ -85,3 +85,9 @@ func Shell(args ...string) *exec.Cmd {
 	cmd.Stderr = os.Stderr
 	return cmd
 }
+
+func ShellOutput(args ...string) ([]byte, error) {
+	cmd := Shell(args...)
+	cmd.Stdout = nil
+	return cmd.Output()
+}
