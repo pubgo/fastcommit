@@ -105,7 +105,11 @@ func RunShell(args ...string) error {
 	if err != nil {
 		return errors.WrapCaller(err)
 	}
-	slog.Info(result)
+	result = strings.TrimSpace(result)
+	if result != "" {
+		slog.Info(result)
+	}
+
 	return nil
 }
 
