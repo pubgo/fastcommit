@@ -5,16 +5,18 @@ builds:
     skip: false
     goos:
       - linux
-      - darwin
       - windows
+      - darwin
     goarch:
       - amd64
+      - "386"
+      - arm
       - arm64
     ignore:
       - goos: windows
         goarch: arm
-      - goos: darwin
-        goarch: amd64
+      - goos: windows
+        goarch: "386"
     ldflags:
       - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
       - -X 'github.com/pubgo/funk/version.project=fastcommit'
@@ -25,6 +27,25 @@ builds:
       - -tags=releaser
     mod_timestamp: '{{ .CommitTimestamp }}'
 archives:
-  - name_template: "{{ .Binary }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
-    format: binary
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
 report_sizes: true
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

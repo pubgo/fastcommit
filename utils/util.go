@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/pubgo/funk/typex"
 	"os"
 	"os/signal"
 	"strconv"
@@ -31,25 +32,29 @@ func GetGitTags() []*semver.Version {
 }
 
 func GetNextTag(pre string) *semver.Version {
-	var maxVer = GetGitMaxTag()
+	var tags = GetGitTags()
+	var maxVer = GetGitMaxTag(tags)
 	var preData = fmt.Sprintf("-%s.", pre)
-	var tags = lo.Filter(GetGitTags(), func(item *semver.Version, index int) bool { return strings.Contains(item.String(), preData) })
-	var curMaxVer = lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+	var curMaxVer = typex.DoBlock1(func() *semver.Version {
+		preTags := lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), preData) })
+		var curMaxVer = lo.MaxBy(preTags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+		return curMaxVer
+	})
 
 	var ver string
 	if curMaxVer != nil && curMaxVer.GreaterThan(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
 		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
-		ver = fmt.Sprintf("v%s-alpha.1", maxVer.Core().String())
+		ver = fmt.Sprintf("v%s-%s.1", maxVer.Core().String(), pre)
 	}
 	return assert.Exit1(semver.NewSemver(ver))
 }
 
-func GetGitMaxTag() *semver.Version {
+func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 	var maxVer = semver.Must(semver.NewVersion("v0.0.0"))
 
-	for _, tag := range GetGitTags() {
+	for _, tag := range tags {
 		if strings.Contains(tag.String(), "-") {
 			continue
 		}
