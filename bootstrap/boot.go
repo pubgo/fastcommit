@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/dix/dix_internal"
+	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
@@ -37,6 +38,8 @@ var defaultConfig []byte
 func Main() {
 	defer recovery.Exit()
 
+	var branchName = string(assert.Exit1(utils.ShellOutput("git", "rev-parse", "--abbrev-ref", "HEAD")))
+
 	slog.Info("config path", "path", configPath)
 	if pathutil.IsNotExist(configPath) {
 		assert.Must(os.WriteFile(configPath, defaultConfig, 0644))
@@ -47,6 +50,7 @@ func Main() {
 	dix_internal.SetLogLevel(zerolog.InfoLevel)
 	var di = dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
+	di.Provide(tagcmd.New)
 	di.Provide(config.Load[Config])
 	di.Provide(utils.NewOpenaiClient)
 
@@ -129,7 +133,7 @@ func Main() {
 
 				msg := resp.Choices[0].Message.Content
 				assert.Must(utils.Shell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)).Run())
-				assert.Must(utils.Shell("git", "push").Run())
+				assert.Must(utils.Shell("git", "push", "origin", branchName).Run())
 
 				return nil
 			},

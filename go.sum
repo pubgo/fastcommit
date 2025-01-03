@@ -71,8 +71,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pubgo/dix v0.3.19 h1:a4RRmljw7ePUvc9uJKqXXs6JpYL8s3VqPP2NV2vxI9U=
 github.com/pubgo/dix v0.3.19/go.mod h1:J0PyuMm7mW6ZrN13l9xz0rtKbzliREFyvb7fuaGYyVw=
-github.com/pubgo/funk v0.5.63 h1:tZCwwx3YzdUvFhb9lXOwQ5kyvSmDBv+zWjq7iRk+/Qc=
-github.com/pubgo/funk v0.5.63/go.mod h1:VMNDJsIFOSMUZ2PRfyIyUQkDpfnFnOYZelFa1r/dmgs=
+github.com/pubgo/funk v0.5.64-alpha.1 h1:RPS5k4c7qcjN3VT42p7O9sJIL7Nv0gu4ZwQi5M4fIIY=
+github.com/pubgo/funk v0.5.64-alpha.1/go.mod h1:VMNDJsIFOSMUZ2PRfyIyUQkDpfnFnOYZelFa1r/dmgs=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=

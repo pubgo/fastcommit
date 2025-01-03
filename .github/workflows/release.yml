@@ -1,0 +1,21 @@
+name: Release
+on:
+  push:
+    tags: [ "v*.*.*" ]
+
+jobs:
+  release:
+    name: Release on GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean --timeout 60m
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}

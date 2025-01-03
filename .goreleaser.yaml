@@ -1,0 +1,45 @@
+builds:
+  - main: ./main.go
+    id: fastcommit
+    binary: fastcommit
+    skip: false
+    env:
+      - CGO_ENABLED=0
+      - GOPROXY=https://goproxy.io
+    targets:
+      - "darwin_amd64"
+      - "windows_amd64"
+      - "linux_amd64"
+      - "linux_amd64"
+    ldflags:
+      - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
+      - -X 'github.com/pubgo/funk/version.project=fastcommit'
+      - -X 'github.com/pubgo/funk/version.buildTime={{ .CommitDate }}'
+      - -X 'github.com/pubgo/funk/version.commitID={{ .ShortCommit }}'
+    flags:
+      - -trimpath
+      - -tags=releaser
+    mod_timestamp: '{{ .CommitTimestamp }}'
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+report_sizes: true
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

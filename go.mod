@@ -6,9 +6,11 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/x/term v0.2.1
+	github.com/hashicorp/go-version v1.7.0
 	github.com/pubgo/dix v0.3.19
-	github.com/pubgo/funk v0.5.63
+	github.com/pubgo/funk v0.5.64-alpha.1
 	github.com/rs/zerolog v1.33.0
+	github.com/samber/lo v1.47.0
 	github.com/sashabaranov/go-openai v1.36.1
 	github.com/urfave/cli/v3 v3.0.0-alpha9.0.20240717192922-127cf54fac9f
 )
@@ -25,7 +27,6 @@ require (
 	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/k0kubun/pp/v3 v3.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -41,7 +42,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
-	github.com/samber/lo v1.47.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
