@@ -101,9 +101,7 @@ func IsHelp() bool {
 }
 
 func RunShell(args ...string) error {
-	var shell = strings.Join(args, " ")
-	slog.Info(shell)
-	result, err := script.Exec(strings.Join(args, " ")).String()
+	result, err := RunOutput(args...)
 	if err != nil {
 		return errors.WrapCaller(err)
 	}
