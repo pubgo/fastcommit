@@ -3,6 +3,8 @@ builds:
     id: fastcommit
     binary: fastcommit
     skip: false
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - windows
