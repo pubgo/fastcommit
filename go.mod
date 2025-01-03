@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/adrg/xdg v0.5.3
+	github.com/bitfield/script v0.24.0
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/hashicorp/go-version v1.7.0
@@ -27,9 +28,10 @@ require (
 	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/itchyny/gojq v0.12.13 // indirect
+	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/k0kubun/pp/v3 v3.2.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -56,4 +58,5 @@ require (
 	google.golang.org/protobuf v1.34.3-0.20240816073751-94ecbc261689 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	mvdan.cc/sh/v3 v3.7.0 // indirect
 )

@@ -38,7 +38,7 @@ var defaultConfig []byte
 func Main() {
 	defer recovery.Exit()
 
-	var branchName = string(assert.Exit1(utils.ShellOutput("git", "rev-parse", "--abbrev-ref", "HEAD")))
+	var branchName = assert.Exit1(utils.RunOutput("git", "rev-parse", "--abbrev-ref", "HEAD"))
 
 	slog.Info("config path", "path", configPath)
 	if pathutil.IsNotExist(configPath) {
@@ -99,7 +99,7 @@ func Main() {
 				repoPath := assert.Must1(utils.AssertGitRepo())
 				slog.Info("Git repository root", "path", repoPath)
 
-				assert.Exit(utils.Shell("git", "add", "--update").Run())
+				assert.Exit(utils.RunShell("git", "add", "-A"))
 
 				diff := assert.Must1(utils.GetStagedDiff(nil))
 
@@ -132,8 +132,8 @@ func Main() {
 				}
 
 				msg := resp.Choices[0].Message.Content
-				assert.Must(utils.Shell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)).Run())
-				assert.Must(utils.Shell("git", "push", "origin", branchName).Run())
+				assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
+				assert.Must(utils.RunShell("git", "push", "origin", branchName))
 
 				return nil
 			},

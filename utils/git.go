@@ -2,8 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log/slog"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -22,14 +20,12 @@ func (e *KnownError) Error() string {
 
 // AssertGitRepo 检查当前目录是否是 Git 仓库
 func AssertGitRepo() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	output, err := cmd.Output()
-
+	output, err := RunOutput("git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", &KnownError{Message: "The current directory must be a Git repository!"}
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	return strings.TrimSpace(output), nil
 }
 
 // ExcludeFromDiff 生成 Git 排除路径的格式
@@ -76,24 +72,7 @@ func GetDetectedMessage(files []string) string {
 	return fmt.Sprintf("Detected %d staged file%s", fileCount, pluralSuffix)
 }
 
-func Shell(args ...string) *exec.Cmd {
-	shell := strings.Join(args, " ")
-	slog.Info(shell)
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = os.Environ()
-	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
-	return cmd
-}
-
-func ShellOutput(args ...string) ([]byte, error) {
-	cmd := Shell(args...)
-	cmd.Stdout = nil
-	return cmd.Output()
-}
-
 func GitTag(ver string) {
-	assert.Must(Shell("git", "tag", ver).Run())
-	assert.Must(Shell("git", "push", "origin", ver).Run())
+	assert.Exit(RunShell("git", "tag", ver))
+	assert.Exit(RunShell("git", "push", "origin", ver))
 }

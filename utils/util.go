@@ -3,20 +3,22 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/pubgo/funk/typex"
+	"github.com/bitfield/script"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/typex"
 	"github.com/samber/lo"
 )
 
 func GetGitTags() []*semver.Version {
-	var tagText = strings.TrimSpace(string(assert.Exit1(ShellOutput("git", "tag"))))
+	var tagText = strings.TrimSpace(assert.Exit1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -95,4 +97,16 @@ func IsHelp() bool {
 		return true
 	}
 	return false
+}
+
+func RunShell(args ...string) error {
+	var shell = strings.Join(args, " ")
+	slog.Info(shell)
+	return script.Exec(strings.Join(args, " ")).Error()
+}
+
+func RunOutput(args ...string) (string, error) {
+	var shell = strings.Join(args, " ")
+	slog.Info(shell)
+	return script.Exec(strings.Join(args, " ")).String()
 }
