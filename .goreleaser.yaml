@@ -5,6 +5,7 @@ builds:
     skip: false
     env:
       - CGO_ENABLED=0
+      - GOPROXY=https://goproxy.io
     goos:
       - linux
       - windows
