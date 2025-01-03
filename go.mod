@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/pubgo/dix v0.3.19
-	github.com/pubgo/funk v0.5.64-conn.1
+	github.com/pubgo/funk v0.5.64-alpha.1
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.47.0
 	github.com/sashabaranov/go-openai v1.36.1
