@@ -79,7 +79,7 @@ func GetDetectedMessage(files []string) string {
 func Shell(args ...string) *exec.Cmd {
 	shell := strings.Join(args, " ")
 	slog.Info(shell)
-	cmd := exec.Command("/bin/sh", "-c", shell)
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
