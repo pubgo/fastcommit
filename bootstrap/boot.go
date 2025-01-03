@@ -99,7 +99,7 @@ func Main() {
 				repoPath := assert.Must1(utils.AssertGitRepo())
 				slog.Info("Git repository root", "path", repoPath)
 
-				assert.Exit(utils.RunShell("git", "add", "-A"))
+				assert.Exit(utils.RunShell("git", "add", "--update"))
 
 				diff := assert.Must1(utils.GetStagedDiff(nil))
 

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/pubgo/funk/assert"
@@ -35,30 +34,28 @@ func ExcludeFromDiff(path string) string {
 
 // GetStagedDiff 获取暂存区的差异
 func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
-	diffCached := []string{"diff", "--cached", "--diff-algorithm=minimal"}
+	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	cmdFiles := exec.Command("git", append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
-	filesOutput, err := cmdFiles.Output()
+	filesOutput, err := RunOutput(append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
 	if err != nil {
 		return nil, errors.WrapCaller(err)
 	}
 
-	files := strings.Split(strings.TrimSpace(string(filesOutput)), "\n")
+	files := strings.Split(strings.TrimSpace(filesOutput), "\n")
 	if len(files) == 0 || files[0] == "" {
 		return nil, nil
 	}
 
 	// 获取暂存区的完整差异
-	cmdDiff := exec.Command("git", append(diffCached, excludeFiles...)...)
-	diffOutput, err := cmdDiff.Output()
+	diffOutput, err := RunOutput(append(diffCached, excludeFiles...)...)
 	if err != nil {
-		return nil, err
+		return nil, errors.WrapCaller(err)
 	}
 
 	return map[string]interface{}{
 		"files": files,
-		"diff":  strings.TrimSpace(string(diffOutput)),
+		"diff":  strings.TrimSpace(diffOutput),
 	}, nil
 }
 
