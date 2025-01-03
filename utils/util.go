@@ -13,6 +13,7 @@ import (
 	"github.com/bitfield/script"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/typex"
 	"github.com/samber/lo"
 )
@@ -102,7 +103,12 @@ func IsHelp() bool {
 func RunShell(args ...string) error {
 	var shell = strings.Join(args, " ")
 	slog.Info(shell)
-	return script.Exec(strings.Join(args, " ")).Error()
+	result, err := script.Exec(strings.Join(args, " ")).String()
+	if err != nil {
+		return errors.WrapCaller(err)
+	}
+	slog.Info(result)
+	return nil
 }
 
 func RunOutput(args ...string) (string, error) {
