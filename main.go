@@ -1,7 +1,8 @@
 package main
 
-import "github.com/pubgo/fastcommit/bootstrap"
-import _ "github.com/pubgo/funk/netutil"
+import (
+	"github.com/pubgo/fastcommit/bootstrap"
+)
 
 func main() {
 	bootstrap.Main()

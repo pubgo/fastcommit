@@ -3,13 +3,13 @@ package utils
 import (
 	"context"
 	"fmt"
-	"github.com/pubgo/funk/typex"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 
+	"github.com/pubgo/funk/typex"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
 	"github.com/samber/lo"
