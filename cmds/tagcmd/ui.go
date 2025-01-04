@@ -3,7 +3,7 @@ package tagcmd
 import (
 	"fmt"
 	"log/slog"
-	
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -112,6 +112,7 @@ func (m model1) View() string {
 
 type model2 struct {
 	textInput textinput.Model
+	exit      bool
 }
 
 // sanitizeInput verifies that an input text string gets validated
@@ -151,6 +152,7 @@ func (m model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return m, tea.Quit
 		case tea.KeyCtrlC, tea.KeyEsc:
+			m.exit = true
 			return m, tea.Quit
 		}
 	}

@@ -22,14 +22,19 @@ func New() *cli.Command {
 			defer recovery.Exit()
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
-			ver := utils.GetNextTag(m.selected)
+			var tags = utils.GetGitTags()
+			ver := utils.GetNextTag(m.selected, tags)
 			if m.selected == "release" {
-				ver = ver.Core()
+				ver = utils.GetNextReleaseTag(tags)
 			}
 
 			tagName := "v" + strings.TrimPrefix(ver.Original(), "v")
 			var p1 = tea.NewProgram(InitialTextInputModel(tagName))
 			m1 := assert.Must1(p1.Run()).(model2)
+			if m1.exit {
+				return nil
+			}
+
 			tagName = m1.Value()
 			_, err := semver.NewVersion(tagName)
 			if err != nil {
