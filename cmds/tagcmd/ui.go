@@ -2,12 +2,13 @@ package tagcmd
 
 import (
 	"fmt"
+	"log/slog"
+	
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	semver "github.com/hashicorp/go-version"
-	"log/slog"
 )
 
 type model struct {

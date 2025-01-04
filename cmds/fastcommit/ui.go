@@ -2,6 +2,7 @@ package fastcommit
 
 import (
 	"fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"

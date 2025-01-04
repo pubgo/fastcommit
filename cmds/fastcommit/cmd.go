@@ -3,6 +3,10 @@ package fastcommit
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"sort"
+	
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
@@ -16,9 +20,6 @@ import (
 	"github.com/pubgo/funk/version"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
-	"log/slog"
-	"os"
-	"sort"
 )
 
 type Params struct {

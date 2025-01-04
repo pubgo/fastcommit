@@ -2,9 +2,9 @@ package bootstrap
 
 import (
 	_ "embed"
-	"github.com/pubgo/fastcommit/configs"
 
 	"github.com/adrg/xdg"
+	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
 )
