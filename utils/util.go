@@ -3,20 +3,23 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/pubgo/funk/typex"
+	"github.com/bitfield/script"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/errors"
+	"github.com/pubgo/funk/typex"
 	"github.com/samber/lo"
 )
 
 func GetGitTags() []*semver.Version {
-	var tagText = strings.TrimSpace(string(assert.Exit1(ShellOutput("git", "tag"))))
+	var tagText = strings.TrimSpace(assert.Exit1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -66,7 +69,13 @@ func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 		maxVer = tag
 	}
 
-	return maxVer
+	ver := lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+	if ver.Core().GreaterThan(maxVer) {
+		return ver.Core()
+	}
+
+	var segments = maxVer.Segments()
+	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
 }
 
 func UsageDesc(format string, args ...interface{}) string {
@@ -95,4 +104,23 @@ func IsHelp() bool {
 		return true
 	}
 	return false
+}
+
+func RunShell(args ...string) error {
+	result, err := RunOutput(args...)
+	if err != nil {
+		return errors.WrapCaller(err)
+	}
+	result = strings.TrimSpace(result)
+	if result != "" {
+		slog.Info(result)
+	}
+
+	return nil
+}
+
+func RunOutput(args ...string) (string, error) {
+	var shell = strings.Join(args, " ")
+	slog.Info(shell)
+	return script.Exec(strings.Join(args, " ")).String()
 }
