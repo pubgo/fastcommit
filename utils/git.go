@@ -32,8 +32,13 @@ func ExcludeFromDiff(path string) string {
 	return fmt.Sprintf(":(exclude)%s", path)
 }
 
+type GetStagedDiffRsp struct {
+	Files []string `json:"files"`
+	Diff  string   `json:"diff"`
+}
+
 // GetStagedDiff 获取暂存区的差异
-func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
+func GetStagedDiff(excludeFiles []string) (*GetStagedDiffRsp, error) {
 	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
@@ -44,7 +49,7 @@ func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 
 	files := strings.Split(strings.TrimSpace(filesOutput), "\n")
 	if len(files) == 0 || files[0] == "" {
-		return nil, nil
+		return new(GetStagedDiffRsp), nil
 	}
 
 	// 获取暂存区的完整差异
@@ -53,9 +58,9 @@ func GetStagedDiff(excludeFiles []string) (map[string]interface{}, error) {
 		return nil, errors.WrapCaller(err)
 	}
 
-	return map[string]interface{}{
-		"files": files,
-		"diff":  strings.TrimSpace(diffOutput),
+	return &GetStagedDiffRsp{
+		Files: files,
+		Diff:  strings.TrimSpace(diffOutput),
 	}, nil
 }
 
@@ -66,10 +71,10 @@ func GetDetectedMessage(files []string) string {
 	if fileCount > 1 {
 		pluralSuffix = "s"
 	}
-	return fmt.Sprintf("Detected %d staged file%s", fileCount, pluralSuffix)
+	return fmt.Sprintf("Detected %d staged file%s\n%s", fileCount, pluralSuffix, strings.Join(files, "\n"))
 }
 
-func GitTag(ver string) {
+func GitPushTag(ver string) {
 	assert.Exit(RunShell("git", "tag", ver))
 	assert.Exit(RunShell("git", "push", "origin", ver))
 }

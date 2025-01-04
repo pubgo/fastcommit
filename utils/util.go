@@ -69,7 +69,13 @@ func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 		maxVer = tag
 	}
 
-	return maxVer
+	ver := lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+	if ver.Core().GreaterThan(maxVer) {
+		return ver.Core()
+	}
+
+	var segments = maxVer.Segments()
+	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
 }
 
 func UsageDesc(format string, args ...interface{}) string {
