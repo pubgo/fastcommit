@@ -10,7 +10,6 @@ builds:
       - "darwin_amd64"
       - "windows_amd64"
       - "linux_amd64"
-      - "linux_amd64"
     ldflags:
       - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
       - -X 'github.com/pubgo/funk/version.project=fastcommit'
@@ -37,40 +36,3 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
-
-changelog:
-  disable: false
-  use: github
-  format: "{{.SHA}}: {{.Message}} (@{{.AuthorUsername}})"
-  sort: asc
-  abbrev: -1
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
-      order: 0
-    - title: "Bug fixes"
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
-      order: 1
-    - title: "Performance optimization"
-      regexp: '^.*?opt(\([[:word:]]+\))??!?:.+$'
-      order: 2
-    - title: "Miscellaneous changes"
-      regexp: '^.*?chore(\([[:word:]]+\))??!?:.+$'
-      order: 3
-    - title: "Code refactoring"
-      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
-      order: 4
-    - title: "Test code changes"
-      regexp: '^.*?test(\([[:word:]]+\))??!?:.+$'
-      order: 5
-    - title: Documentation
-      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
-      order: 6
-    - title: "Reverting changes"
-      regexp: '^.*?revert(\([[:word:]]+\))??!?:.+$'
-      order: 7
-    - title: "Version releases"
-      regexp: '^.*?release(\([[:word:]]+\))??!?:.+$'
-      order: 8
-    - title: Others
-      order: 999
