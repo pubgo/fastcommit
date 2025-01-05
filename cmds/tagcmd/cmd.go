@@ -17,7 +17,8 @@ import (
 
 func New() *cli.Command {
 	return &cli.Command{
-		Name: "tag",
+		Name:  "tag",
+		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 			var p = tea.NewProgram(initialModel())

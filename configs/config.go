@@ -8,6 +8,13 @@ import (
 	"github.com/pubgo/funk/assert"
 )
 
+type EnvConfig struct {
+	Description string `yaml:"description"`
+	Default     string `yaml:"default"`
+	Name        string `yaml:"name"`
+	Required    bool   `yaml:"required"`
+}
+
 type Config struct {
 	BranchName string
 }
@@ -22,6 +29,9 @@ var branchName = assert.Exit1(utils.RunOutput("git", "rev-parse", "--abbrev-ref"
 //go:embed default.yaml
 var defaultConfig []byte
 
+//go:embed env.yaml
+var envConfig []byte
+
 func GetConfigPath() string {
 	return configPath
 }
@@ -32,4 +42,8 @@ func GetBranchName() string {
 
 func GetDefaultConfig() []byte {
 	return defaultConfig
+}
+
+func GetEnvConfig() []byte {
+	return envConfig
 }

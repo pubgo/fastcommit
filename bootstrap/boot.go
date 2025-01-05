@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"github.com/pubgo/fastcommit/cmds/envcmd"
 	"log/slog"
 	"os"
 
@@ -56,6 +57,7 @@ func Main() {
 	di.Provide(tagcmd.New)
 	di.Provide(config.Load[ConfigProvider])
 	di.Provide(utils.NewOpenaiClient)
+	di.Provide(envcmd.New)
 	di.Provide(fastcommit.New)
 	di.Inject(func(cmd *fastcommit.Command) { cmd.Run() })
 }
