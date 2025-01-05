@@ -41,24 +41,24 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
+      - '^docs'
+      - '^test'
+      - '^chore'
     include:
-      - '^feat:'
-      - '^fix:'
-      - '^perf:'
-      - '^refactor:'
+      - '^feat'
+      - '^fix'
+      - '^perf'
+      - '^refactor'
   use: git
   groups:
     - title: "New Features"
-      regexp: "^feat:"
+      regexp: "^feat"
     - title: "Bug Fixes"
-      regexp: "^fix:"
+      regexp: "^fix"
     - title: "Performance Improvements"
-      regexp: "^perf:"
+      regexp: "^perf"
     - title: "Refactors"
-      regexp: "^refactor:"
+      regexp: "^refactor"
 
 release:
   github:
