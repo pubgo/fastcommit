@@ -67,4 +67,4 @@ release:
   name_template: '{{ .ProjectName }} {{ .Tag }}'
   footer: |
     ## Installation
-    Download the latest release from the [GitHub Releases](https://github.com/myusername/myapp/releases) page.
+    Download the latest release from the [GitHub Releases](https://github.com/pubgo/fastcommit/releases) page.
