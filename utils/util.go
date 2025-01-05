@@ -40,6 +40,11 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
 
+	if curMaxVer.Prerelease() == "" {
+		segments := curMaxVer.Core().Segments()
+		return assert.Exit1(semver.NewSemver(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
+	}
+
 	return curMaxVer.Core()
 }
 
@@ -50,7 +55,6 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 		return curMaxVer
 	})
 
-	fmt.Println(curMaxVer.String(), maxVer.String())
 	var ver string
 	if curMaxVer != nil && curMaxVer.Core().GreaterThan(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
