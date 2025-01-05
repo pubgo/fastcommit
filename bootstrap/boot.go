@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"github.com/pubgo/fastcommit/cmds/envcmd"
 	"log/slog"
 	"os"
 
@@ -9,6 +8,7 @@ import (
 	_ "github.com/charmbracelet/bubbletea"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/dix/dix_internal"
+	"github.com/pubgo/fastcommit/cmds/envcmd"
 	"github.com/pubgo/fastcommit/cmds/fastcommit"
 	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
