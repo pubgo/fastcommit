@@ -61,10 +61,7 @@ func (m model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View is called to draw the textinput step
 func (m model2) View() string {
-	return fmt.Sprintf(
-		"git message: %s\n",
-		m.textInput.View(),
-	)
+	return fmt.Sprintf("git message: %s\nPlease update and type key enter\n", m.textInput.View())
 }
 
 func (m model2) Value() string {

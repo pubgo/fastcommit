@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
-	
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
@@ -49,6 +49,7 @@ func New(params Params) *Command {
 		},
 		Commands: params.Cmd,
 		Action: func(ctx context.Context, command *cli.Command) error {
+			defer recovery.Exit()
 			var cfg = params.Cfg
 			if utils.IsHelp() {
 				return cli.ShowAppHelp(command)
@@ -103,7 +104,7 @@ func New(params Params) *Command {
 			}
 
 			msg := resp.Choices[0].Message.Content
-			fmt.Println(msg)
+			slog.Info("openai response git message", "msg", msg)
 			var p1 = tea.NewProgram(InitialTextInputModel(msg))
 			mm := assert.Must1(p1.Run()).(model2)
 			if mm.isExit() {
@@ -128,6 +129,5 @@ type Command struct {
 
 func (c *Command) Run() {
 	defer recovery.Exit()
-	sort.Sort(cli.FlagsByName(c.cmd.Flags))
 	assert.Exit(c.cmd.Run(utils.Context(), os.Args))
 }

@@ -10,7 +10,6 @@ builds:
       - "darwin_amd64"
       - "windows_amd64"
       - "linux_amd64"
-      - "linux_amd64"
     ldflags:
       - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
       - -X 'github.com/pubgo/funk/version.project=fastcommit'
@@ -37,9 +36,35 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+
 changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - '^docs'
+      - '^test'
+      - '^chore'
+    include:
+      - '^feat'
+      - '^fix'
+      - '^perf'
+      - '^refactor'
+  use: git
+  groups:
+    - title: "New Features"
+      regexp: "^feat"
+    - title: "Bug Fixes"
+      regexp: "^fix"
+    - title: "Performance Improvements"
+      regexp: "^perf"
+    - title: "Refactors"
+      regexp: "^refactor"
+
+release:
+  github:
+    owner: pubgo
+    name: fastcommit
+  name_template: '{{ .ProjectName }} {{ .Tag }}'
+  footer: |
+    ## Installation
+    Download the latest release from the [GitHub Releases](https://github.com/pubgo/fastcommit/releases) page.

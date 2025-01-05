@@ -27,6 +27,7 @@ func GetGitTags() []*semver.Version {
 		tag = strings.TrimSpace(tag)
 		vv, err := semver.NewSemver(tag)
 		if err != nil {
+			slog.Error("failed to parse git tag", "tag", tag, "err", err)
 			continue
 		}
 		versions = append(versions, vv)
@@ -34,22 +35,32 @@ func GetGitTags() []*semver.Version {
 	return versions
 }
 
-func GetNextTag(pre string) *semver.Version {
-	var tags = GetGitTags()
-	var maxVer = GetGitMaxTag(tags)
-	var preData = fmt.Sprintf("-%s.", pre)
+func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
-		preTags := lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), preData) })
-		var curMaxVer = lo.MaxBy(preTags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+	})
+
+	return curMaxVer.Core()
+}
+
+func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
+	var maxVer = GetGitMaxTag(tags)
+	var curMaxVer = typex.DoBlock1(func() *semver.Version {
+		var curMaxVer = lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 		return curMaxVer
 	})
 
+	fmt.Println(curMaxVer.String(), maxVer.String())
 	var ver string
-	if curMaxVer != nil && curMaxVer.GreaterThan(maxVer) {
+	if curMaxVer != nil && curMaxVer.Core().GreaterThan(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
+		if ver == "" {
+			ver = "1"
+		}
+
 		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
-		ver = fmt.Sprintf("v%s-%s.1", maxVer.Core().String(), pre)
+		ver = fmt.Sprintf("v%s-%s.1", maxVer.String(), pre)
 	}
 	return assert.Exit1(semver.NewSemver(ver))
 }
