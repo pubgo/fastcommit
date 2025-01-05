@@ -36,3 +36,35 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+    include:
+      - '^feat:'
+      - '^fix:'
+      - '^perf:'
+      - '^refactor:'
+  use: git
+  groups:
+    - title: "New Features"
+      regexp: "^feat:"
+    - title: "Bug Fixes"
+      regexp: "^fix:"
+    - title: "Performance Improvements"
+      regexp: "^perf:"
+    - title: "Refactors"
+      regexp: "^refactor:"
+
+release:
+  github:
+    owner: kooksee
+    name: fastcommit
+  name_template: '{{ .ProjectName }} {{ .Tag }}'
+  footer: |
+    ## Installation
+    Download the latest release from the [GitHub Releases](https://github.com/myusername/myapp/releases) page.
