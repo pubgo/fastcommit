@@ -18,7 +18,7 @@ import (
 	"github.com/samber/lo"
 )
 
-func GetGitTags() []*semver.Version {
+func GetAllGitTags() []*semver.Version {
 	var tagText = strings.TrimSpace(assert.Exit1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))

@@ -22,13 +22,24 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			utils.GitFetchAll()
-			
+			var done = make(chan struct{})
+			go func() {
+				defer close(done)
+				utils.GitFetchAll()
+			}()
+
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
-			var tags = utils.GetGitTags()
-			ver := utils.GetNextTag(m.selected, tags)
-			if m.selected == envRelease {
+			selected := strings.TrimSpace(m.selected)
+			if selected == "" {
+				return nil
+			}
+
+			<-done
+
+			tags := utils.GetAllGitTags()
+			ver := utils.GetNextTag(selected, tags)
+			if selected == envRelease {
 				ver = utils.GetNextReleaseTag(tags)
 			}
 
