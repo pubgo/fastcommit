@@ -22,11 +22,7 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			var done = make(chan struct{})
-			go func() {
-				defer close(done)
-				utils.GitFetchAll()
-			}()
+			utils.GitFetchAll()
 
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
@@ -34,8 +30,6 @@ func New() *cli.Command {
 			if selected == "" {
 				return nil
 			}
-
-			<-done
 
 			tags := utils.GetAllGitTags()
 			ver := utils.GetNextTag(selected, tags)
