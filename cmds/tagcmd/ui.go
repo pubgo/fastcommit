@@ -11,6 +11,12 @@ import (
 	semver "github.com/hashicorp/go-version"
 )
 
+const (
+	envAlpha   = "alpha"
+	envBeta    = "beta"
+	envRelease = "release"
+)
+
 type model struct {
 	cursor   int
 	choices  []string
@@ -19,7 +25,7 @@ type model struct {
 }
 
 func initialModel() model {
-	choices := []string{"alpha", "beta", "release"}
+	choices := []string{envAlpha, envBeta, envRelease}
 	return model{
 		choices: choices,
 		length:  len(choices),

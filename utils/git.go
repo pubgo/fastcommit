@@ -78,3 +78,7 @@ func GitPushTag(ver string) {
 	assert.Exit(RunShell("git", "tag", ver))
 	assert.Exit(RunShell("git", "push", "origin", ver))
 }
+
+func GitFetchAll() {
+	assert.Exit(RunShell("git", "fetch", "--tags", "--all"))
+}

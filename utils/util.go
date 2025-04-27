@@ -28,7 +28,7 @@ func GetGitTags() []*semver.Version {
 		vv, err := semver.NewSemver(tag)
 		if err != nil {
 			slog.Error("failed to parse git tag", "tag", tag, "err", err)
-			continue
+			assert.Exit(err)
 		}
 		versions = append(versions, vv)
 	}
@@ -51,8 +51,7 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 	var maxVer = GetGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
-		var curMaxVer = lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
-		return curMaxVer
+		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
 
 	var ver string
@@ -73,20 +72,11 @@ func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 	var maxVer = semver.Must(semver.NewVersion("v0.0.0"))
 
 	for _, tag := range tags {
-		if strings.Contains(tag.String(), "-") {
-			continue
-		}
-
 		if maxVer.Compare(tag) >= 0 {
 			continue
 		}
 
 		maxVer = tag
-	}
-
-	ver := lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
-	if ver.Core().GreaterThan(maxVer) {
-		return ver.Core()
 	}
 
 	var segments = maxVer.Segments()
@@ -137,5 +127,5 @@ func RunShell(args ...string) error {
 func RunOutput(args ...string) (string, error) {
 	var shell = strings.Join(args, " ")
 	slog.Info(shell)
-	return script.Exec(strings.Join(args, " ")).String()
+	return script.Exec(shell).String()
 }

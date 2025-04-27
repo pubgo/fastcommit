@@ -21,11 +21,14 @@ func New() *cli.Command {
 		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
+
+			utils.GitFetchAll()
+			
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
 			var tags = utils.GetGitTags()
 			ver := utils.GetNextTag(m.selected, tags)
-			if m.selected == "release" {
+			if m.selected == envRelease {
 				ver = utils.GetNextReleaseTag(tags)
 			}
 
