@@ -14,8 +14,8 @@ require (
 	github.com/pubgo/funk v0.5.64-alpha.1
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.47.0
-	github.com/sashabaranov/go-openai v1.36.1
-	github.com/urfave/cli/v3 v3.0.0-alpha9.0.20240717192922-127cf54fac9f
+	github.com/sashabaranov/go-openai v1.38.2
+	github.com/urfave/cli/v3 v3.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
