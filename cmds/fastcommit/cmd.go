@@ -41,7 +41,7 @@ func New(params Params) *Command {
 			&cli.BoolFlag{
 				Name:        "debug",
 				Usage:       "enable debug mode",
-				Persistent:  true,
+				Local:       true,
 				Value:       running.IsDebug,
 				Destination: &running.IsDebug,
 				Sources:     cli.EnvVars(env.Key("debug"), env.Key("enable_debug")),
