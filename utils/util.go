@@ -126,7 +126,7 @@ func RunShell(args ...string) error {
 
 	result = strings.TrimSpace(result)
 	if result != "" {
-		slog.Info("result: " + result)
+		slog.Info("result: \n" + result)
 	}
 
 	return nil
