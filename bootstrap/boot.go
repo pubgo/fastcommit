@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"log/slog"
 	"os"
 
 	_ "github.com/adrg/xdg"
@@ -27,7 +26,6 @@ import (
 func Main() {
 	defer recovery.Exit()
 
-	slog.Info("config: " + configs.GetConfigPath())
 	typex.DoBlock(func() {
 		if pathutil.IsNotExist(configs.GetConfigPath()) {
 			assert.Must(os.WriteFile(configs.GetConfigPath(), configs.GetDefaultConfig(), 0644))
@@ -50,9 +48,7 @@ func Main() {
 	var di = dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
 	di.Provide(func() *configs.Config {
-		return &configs.Config{
-			BranchName: configs.GetBranchName(),
-		}
+		return &configs.Config{}
 	})
 	di.Provide(tagcmd.New)
 	di.Provide(config.Load[ConfigProvider])

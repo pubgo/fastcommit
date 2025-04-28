@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
@@ -47,10 +48,15 @@ func New(params Params) *Command {
 				Sources:     cli.EnvVars(env.Key("debug"), env.Key("enable_debug")),
 			},
 		},
+		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
+			branchName := configs.GetBranchName()
+			slog.Info("current branch: " + strings.TrimSpace(branchName))
+			slog.Info("config: " + configs.GetConfigPath())
+			return ctx, nil
+		},
 		Commands: params.Cmd,
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
-			var cfg = params.Cfg
 			if utils.IsHelp() {
 				return cli.ShowAppHelp(command)
 			}
@@ -113,7 +119,7 @@ func New(params Params) *Command {
 
 			msg = mm.Value()
 			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
-			assert.Must(utils.RunShell("git", "push", "origin", cfg.BranchName))
+			assert.Must(utils.RunShell("git", "push", "origin", configs.GetBranchName()))
 
 			return nil
 		},
