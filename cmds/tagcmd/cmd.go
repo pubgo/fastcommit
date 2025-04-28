@@ -3,8 +3,10 @@ package tagcmd
 import (
 	"context"
 	"fmt"
+	"github.com/briandowns/spinner"
 	"log/slog"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
@@ -13,6 +15,8 @@ import (
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/recovery"
 	"github.com/urfave/cli/v3"
+
+	_ "github.com/briandowns/spinner"
 )
 
 func New() *cli.Command {
@@ -21,7 +25,12 @@ func New() *cli.Command {
 		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
+			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+				s.Prefix = "fetch git tag: "
+			})
+			s.Start()
 			utils.GitFetchAll()
+			s.Stop()
 
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
