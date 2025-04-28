@@ -69,8 +69,11 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 }
 
 func GetGitMaxTag(tags []*semver.Version) *semver.Version {
-	var maxVer = semver.Must(semver.NewVersion("v0.0.0"))
+	if len(tags) == 0 {
+		return semver.Must(semver.NewVersion("v0.0.1"))
+	}
 
+	maxVer := semver.Must(semver.NewVersion("v0.0.0"))
 	for _, tag := range tags {
 		if maxVer.Compare(tag) >= 0 {
 			continue
@@ -79,8 +82,11 @@ func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 		maxVer = tag
 	}
 
-	var segments = maxVer.Segments()
-	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
+	segments := maxVer.Segments()
+	v3 := segments[2]
+	v3 = lo.If(strings.Contains(maxVer.String(), "-"), v3).Else(v3 + 1)
+
+	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], v3)))
 }
 
 func UsageDesc(format string, args ...interface{}) string {
