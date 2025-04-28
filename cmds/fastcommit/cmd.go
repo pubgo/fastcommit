@@ -68,7 +68,7 @@ func New(params Params) *Command {
 			generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 
 			repoPath := assert.Must1(utils.AssertGitRepo())
-			slog.Info("Git repository root", "path", repoPath)
+			slog.Info("git repo: " + repoPath)
 
 			assert.Must(utils.RunShell("git", "add", "--update"))
 
