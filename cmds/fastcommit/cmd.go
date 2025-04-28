@@ -3,10 +3,12 @@ package fastcommit
 import (
 	"context"
 	"fmt"
+	"github.com/briandowns/spinner"
 	"log/slog"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
@@ -83,6 +85,10 @@ func New(params Params) *Command {
 
 			slog.Info(utils.GetDetectedMessage(diff.Files))
 
+			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+				s.Prefix = "generate git message: "
+			})
+			s.Start()
 			resp, err := params.OpenaiClient.Client.CreateChatCompletion(
 				context.Background(),
 				openai.ChatCompletionRequest{
@@ -99,6 +105,7 @@ func New(params Params) *Command {
 					},
 				},
 			)
+			s.Stop()
 
 			if err != nil {
 				slog.Error("failed to call openai", "err", err)
