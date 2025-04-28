@@ -3,13 +3,13 @@ package fastcommit
 import (
 	"context"
 	"fmt"
-	"github.com/briandowns/spinner"
 	"log/slog"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
