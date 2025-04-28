@@ -75,10 +75,10 @@ func GetDetectedMessage(files []string) string {
 }
 
 func GitPushTag(ver string) {
-	assert.Exit(RunShell("git", "tag", ver))
-	assert.Exit(RunShell("git", "push", "origin", ver))
+	assert.Must(RunShell("git", "tag", ver))
+	assert.Must(RunShell("git", "push", "origin", ver))
 }
 
 func GitFetchAll() {
-	assert.Exit(RunShell("git", "fetch", "--tags"))
+	assert.Must(RunShell("git", "fetch", "--tags"))
 }

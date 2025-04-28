@@ -38,9 +38,9 @@ func Main() {
 		config.LoadFromPath(&cfg, configs.GetConfigPath())
 
 		var defaultCfg ConfigProvider
-		assert.Exit(yaml.Unmarshal(configs.GetDefaultConfig(), &defaultCfg))
+		assert.Must(yaml.Unmarshal(configs.GetDefaultConfig(), &defaultCfg))
 		if cfg.Version == nil || cfg.Version.Name == "" || defaultCfg.Version.Name != cfg.Version.Name {
-			assert.Exit(os.WriteFile(configs.GetConfigPath(), configs.GetDefaultConfig(), 0644))
+			assert.Must(os.WriteFile(configs.GetConfigPath(), configs.GetDefaultConfig(), 0644))
 		}
 	})
 

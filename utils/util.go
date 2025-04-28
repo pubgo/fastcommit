@@ -19,7 +19,7 @@ import (
 )
 
 func GetAllGitTags() []*semver.Version {
-	var tagText = strings.TrimSpace(assert.Exit1(RunOutput("git", "tag")))
+	var tagText = strings.TrimSpace(assert.Must1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -32,7 +32,7 @@ func GetAllGitTags() []*semver.Version {
 		vv, err := semver.NewSemver(tag)
 		if err != nil {
 			slog.Error("failed to parse git tag", "tag", tag, "err", err)
-			assert.Exit(err)
+			assert.Must(err)
 		}
 		versions = append(versions, vv)
 	}
@@ -46,7 +46,7 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 
 	if curMaxVer.Prerelease() == "" {
 		segments := curMaxVer.Core().Segments()
-		return assert.Exit1(semver.NewSemver(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
+		return assert.Must1(semver.NewSemver(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], segments[2]+1)))
 	}
 
 	return curMaxVer.Core()
@@ -69,7 +69,7 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 	} else {
 		ver = fmt.Sprintf("v%s-%s.1", maxVer.String(), pre)
 	}
-	return assert.Exit1(semver.NewSemver(ver))
+	return assert.Must1(semver.NewSemver(ver))
 }
 
 func GetGitMaxTag(tags []*semver.Version) *semver.Version {
@@ -126,6 +126,7 @@ func RunShell(args ...string) error {
 	if err != nil {
 		return errors.WrapCaller(err)
 	}
+
 	result = strings.TrimSpace(result)
 	if result != "" {
 		slog.Info(result)

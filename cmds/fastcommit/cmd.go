@@ -64,7 +64,7 @@ func New(params Params) *Command {
 			repoPath := assert.Must1(utils.AssertGitRepo())
 			slog.Info("Git repository root", "path", repoPath)
 
-			assert.Exit(utils.RunShell("git", "add", "--update"))
+			assert.Must(utils.RunShell("git", "add", "--update"))
 
 			diff := assert.Must1(utils.GetStagedDiff(nil))
 			if diff == nil {
@@ -129,5 +129,5 @@ type Command struct {
 
 func (c *Command) Run() {
 	defer recovery.Exit()
-	assert.Exit(c.cmd.Run(utils.Context(), os.Args))
+	assert.Must(c.cmd.Run(utils.Context(), os.Args))
 }

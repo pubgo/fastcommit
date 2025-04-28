@@ -21,7 +21,6 @@ func New() *cli.Command {
 		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
-
 			utils.GitFetchAll()
 
 			var p = tea.NewProgram(initialModel())
