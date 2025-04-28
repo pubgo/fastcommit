@@ -80,5 +80,5 @@ func GitPushTag(ver string) {
 }
 
 func GitFetchAll() {
-	assert.Exit(RunShell("git", "fetch", "--tags", "--all"))
+	assert.Exit(RunShell("git", "fetch", "--tags"))
 }
