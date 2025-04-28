@@ -2,9 +2,7 @@ package tagcmd
 
 import (
 	"context"
-	"fmt"
 	"github.com/briandowns/spinner"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -57,7 +55,7 @@ func New() *cli.Command {
 			if err != nil {
 				return errors.Format("tag name is not valid: %s", tagName)
 			}
-			slog.Info(fmt.Sprintf("selected tag: %s", tagName))
+
 			utils.GitPushTag(tagName)
 			return nil
 		},
