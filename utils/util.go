@@ -19,6 +19,7 @@ import (
 )
 
 func GetAllGitTags() []*semver.Version {
+	slog.Info("get all tags")
 	var tagText = strings.TrimSpace(assert.Must1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
