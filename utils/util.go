@@ -25,6 +25,10 @@ func GetAllGitTags() []*semver.Version {
 
 	for _, tag := range tags {
 		tag = strings.TrimSpace(tag)
+		if strings.HasPrefix(tag, "v") {
+			continue
+		}
+
 		vv, err := semver.NewSemver(tag)
 		if err != nil {
 			slog.Error("failed to parse git tag", "tag", tag, "err", err)
