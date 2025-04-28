@@ -27,7 +27,7 @@ import (
 func Main() {
 	defer recovery.Exit()
 
-	slog.Info("config path", "path", configs.GetConfigPath())
+	slog.Info("config: " + configs.GetConfigPath())
 	typex.DoBlock(func() {
 		if pathutil.IsNotExist(configs.GetConfigPath()) {
 			assert.Must(os.WriteFile(configs.GetConfigPath(), configs.GetDefaultConfig(), 0644))

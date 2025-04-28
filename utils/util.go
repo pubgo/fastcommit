@@ -55,19 +55,16 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 	var maxVer = GetGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
+		tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), pre) })
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
 
 	var ver string
-	if curMaxVer != nil && curMaxVer.Core().GreaterThan(maxVer) {
+	if curMaxVer != nil {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
-		if ver == "" {
-			ver = "1"
-		}
-
 		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
-		ver = fmt.Sprintf("v%s-%s.1", maxVer.String(), pre)
+		ver = fmt.Sprintf("v%s-%s.1", maxVer.Core().String(), pre)
 	}
 	return assert.Must1(semver.NewSemver(ver))
 }
@@ -129,7 +126,7 @@ func RunShell(args ...string) error {
 
 	result = strings.TrimSpace(result)
 	if result != "" {
-		slog.Info(result)
+		slog.Info("result: " + result)
 	}
 
 	return nil
@@ -137,6 +134,6 @@ func RunShell(args ...string) error {
 
 func RunOutput(args ...string) (string, error) {
 	var shell = strings.Join(args, " ")
-	slog.Info(shell)
+	slog.Info("shell: " + shell)
 	return script.Exec(shell).String()
 }

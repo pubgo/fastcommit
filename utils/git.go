@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/pubgo/funk/assert"
@@ -75,6 +76,11 @@ func GetDetectedMessage(files []string) string {
 }
 
 func GitPushTag(ver string) {
+	if ver == "" {
+		return
+	}
+
+	slog.Info("git push tag " + ver)
 	assert.Must(RunShell("git", "tag", ver))
 	assert.Must(RunShell("git", "push", "origin", ver))
 }
