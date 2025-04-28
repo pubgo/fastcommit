@@ -25,7 +25,7 @@ func GetAllGitTags() []*semver.Version {
 
 	for _, tag := range tags {
 		tag = strings.TrimSpace(tag)
-		if strings.HasPrefix(tag, "v") {
+		if !strings.HasPrefix(tag, "v") {
 			continue
 		}
 
