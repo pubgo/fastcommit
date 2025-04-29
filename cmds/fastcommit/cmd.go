@@ -108,7 +108,6 @@ func New(params Params) *Command {
 			}
 
 			msg := resp.Choices[0].Message.Content
-			log.Info().Any("usage", resp.Usage).Msg("openai response git message")
 			var p1 = tea.NewProgram(InitialTextInputModel(msg))
 			mm := assert.Must1(p1.Run()).(model2)
 			if mm.isExit() {
@@ -118,7 +117,7 @@ func New(params Params) *Command {
 			msg = mm.Value()
 			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
 			assert.Must(utils.RunShell("git", "push", "origin", configs.GetBranchName()))
-
+			log.Info().Any("usage", resp.Usage).Msg("openai response usage")
 			return nil
 		},
 	}
