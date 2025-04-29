@@ -81,7 +81,7 @@ func New(params Params) *Command {
 			})
 			s.Start()
 			resp, err := params.OpenaiClient.Client.CreateChatCompletion(
-				context.Background(),
+				ctx,
 				openai.ChatCompletionRequest{
 					Model: params.OpenaiClient.Cfg.Model,
 					Messages: []openai.ChatCompletionMessage{

@@ -54,14 +54,14 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 }
 
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
-	var maxVer = GetGitMaxTag(tags)
+	var maxVer = GetNextGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), pre) })
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
 
 	var ver string
-	if curMaxVer != nil && curMaxVer.GreaterThan(maxVer) {
+	if curMaxVer != nil && curMaxVer.Core().GreaterThanOrEqual(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
 		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
@@ -70,7 +70,7 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 	return assert.Must1(semver.NewSemver(ver))
 }
 
-func GetGitMaxTag(tags []*semver.Version) *semver.Version {
+func GetNextGitMaxTag(tags []*semver.Version) *semver.Version {
 	maxVer := semver.Must(semver.NewVersion("v0.0.1"))
 	if len(tags) == 0 {
 		return maxVer
