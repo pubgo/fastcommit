@@ -108,7 +108,7 @@ func New(params Params) *Command {
 			}
 
 			msg := resp.Choices[0].Message.Content
-			log.Info().Str("msg", msg).Msg("openai response git message")
+			log.Info().Any("usage", resp.Usage).Msg("openai response git message")
 			var p1 = tea.NewProgram(InitialTextInputModel(msg))
 			mm := assert.Must1(p1.Run()).(model2)
 			if mm.isExit() {
