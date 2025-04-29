@@ -13,9 +13,8 @@ import (
 
 func New() *cli.Command {
 	return &cli.Command{
-		Name:    "version",
-		Aliases: []string{"v"},
-		Usage:   utils.UsageDesc("%s version info", version.Project()),
+		Name:  "version",
+		Usage: utils.UsageDesc("%s version info", version.Project()),
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 			fmt.Println("project:", version.Project())
