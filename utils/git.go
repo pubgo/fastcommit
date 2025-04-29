@@ -72,7 +72,7 @@ func GetDetectedMessage(files []string) string {
 	if fileCount > 1 {
 		pluralSuffix = "s"
 	}
-	return fmt.Sprintf("detected %d staged file%s\n%s", fileCount, pluralSuffix, strings.Join(files, "\n"))
+	return fmt.Sprintf("detected %d staged file%s", fileCount, pluralSuffix)
 }
 
 func GitPushTag(ver string) {
