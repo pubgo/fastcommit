@@ -13,6 +13,7 @@ import (
 	"github.com/pubgo/funk/recovery"
 	"github.com/urfave/cli/v3"
 
+	"github.com/pubgo/fastcommit/cmds/cmdutils"
 	"github.com/pubgo/fastcommit/utils"
 )
 
@@ -22,6 +23,9 @@ func New() *cli.Command {
 		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
+
+			cmdutils.LoadConfigAndBranch()
+
 			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 				s.Prefix = "fetch git tag: "
 			})

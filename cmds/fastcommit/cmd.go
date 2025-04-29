@@ -5,24 +5,23 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
-	"github.com/pubgo/fastcommit/configs"
-	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/env"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
-	"github.com/pubgo/funk/running"
 	"github.com/pubgo/funk/version"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
+
+	"github.com/pubgo/fastcommit/cmds/cmdutils"
+	"github.com/pubgo/fastcommit/configs"
+	"github.com/pubgo/fastcommit/utils"
 )
 
 type Params struct {
@@ -40,32 +39,21 @@ func New(params Params) *Command {
 		ShellComplete:          cli.DefaultAppComplete,
 		Usage:                  "Intelligent generation of git commit message",
 		Version:                version.Version(),
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "debug",
-				Usage:       "enable debug mode",
-				Local:       true,
-				Value:       running.IsDebug,
-				Destination: &running.IsDebug,
-				Sources:     cli.EnvVars(env.Key("debug"), env.Key("enable_debug")),
-			},
-		},
+		Commands:               params.Cmd,
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
-			branchName := configs.GetBranchName()
-			log.Info().Msg("current branch: " + strings.TrimSpace(branchName))
-			log.Info().Msg("config: " + configs.GetConfigPath())
-			return ctx, nil
-		},
-		Commands: params.Cmd,
-		Action: func(ctx context.Context, command *cli.Command) error {
-			defer recovery.Exit()
-			if utils.IsHelp() {
-				return cli.ShowAppHelp(command)
+			if !term.IsTerminal(os.Stdin.Fd()) {
+				return ctx, fmt.Errorf("stdin is not a terminal")
 			}
 
-			if !term.IsTerminal(os.Stdin.Fd()) {
-				return nil
+			if utils.IsHelp() {
+				return ctx, cli.ShowAppHelp(command)
 			}
+			return ctx, nil
+		},
+		Action: func(ctx context.Context, command *cli.Command) error {
+			defer recovery.Exit()
+
+			cmdutils.LoadConfigAndBranch()
 
 			generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 
