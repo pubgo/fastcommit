@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -73,7 +72,9 @@ func New(params Params) *Command {
 			}
 
 			log.Info().Msg(utils.GetDetectedMessage(diff.Files))
-			fmt.Println(strings.Join(diff.Files, "\n"))
+			for _, file := range diff.Files {
+				log.Info().Msg("file: " + file)
+			}
 
 			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 				s.Prefix = "generate git message: "
