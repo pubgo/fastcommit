@@ -135,6 +135,6 @@ func RunShell(args ...string) error {
 
 func RunOutput(args ...string) (string, error) {
 	var shell = strings.Join(args, " ")
-	log.Info().Msg("shell: " + shell)
+	log.Info().Msg("shell: " + strings.TrimSpace(shell))
 	return script.Exec(shell).String()
 }
