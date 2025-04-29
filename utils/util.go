@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"strconv"
@@ -14,12 +13,13 @@ import (
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
+	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/typex"
 	"github.com/samber/lo"
 )
 
 func GetAllGitTags() []*semver.Version {
-	slog.Info("get all tags")
+	log.Info().Msg("get all tags")
 	var tagText = strings.TrimSpace(assert.Must1(RunOutput("git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
@@ -32,7 +32,7 @@ func GetAllGitTags() []*semver.Version {
 
 		vv, err := semver.NewSemver(tag)
 		if err != nil {
-			slog.Error("failed to parse git tag", "tag", tag, "err", err)
+			log.Err(err).Str("tag", tag).Msg("failed to parse git tag")
 			assert.Must(err)
 		}
 		versions = append(versions, vv)
@@ -61,7 +61,7 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 	})
 
 	var ver string
-	if curMaxVer != nil {
+	if curMaxVer != nil && curMaxVer.GreaterThan(maxVer) {
 		ver = strings.ReplaceAll(curMaxVer.Prerelease(), fmt.Sprintf("%s.", pre), "")
 		ver = fmt.Sprintf("v%s-%s.%d", curMaxVer.Core().String(), pre, assert.Must1(strconv.Atoi(ver))+1)
 	} else {
@@ -71,11 +71,11 @@ func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
 }
 
 func GetGitMaxTag(tags []*semver.Version) *semver.Version {
+	maxVer := semver.Must(semver.NewVersion("v0.0.1"))
 	if len(tags) == 0 {
-		return semver.Must(semver.NewVersion("v0.0.1"))
+		return maxVer
 	}
 
-	maxVer := semver.Must(semver.NewVersion("v0.0.0"))
 	for _, tag := range tags {
 		if maxVer.Compare(tag) >= 0 {
 			continue
@@ -85,10 +85,9 @@ func GetGitMaxTag(tags []*semver.Version) *semver.Version {
 	}
 
 	segments := maxVer.Segments()
-	v3 := segments[2]
-	v3 = lo.If(strings.Contains(maxVer.String(), "-"), v3).Else(v3 + 1)
+	v3Segment := lo.If(strings.Contains(maxVer.String(), "-"), segments[2]).Else(segments[2] + 1)
 
-	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], v3)))
+	return semver.Must(semver.NewVersion(fmt.Sprintf("v%d.%d.%d", segments[0], segments[1], v3Segment)))
 }
 
 func UsageDesc(format string, args ...interface{}) string {
@@ -127,7 +126,7 @@ func RunShell(args ...string) error {
 
 	result = strings.TrimSpace(result)
 	if result != "" {
-		slog.Info("shell result")
+		log.Info().Msg("shell result")
 		fmt.Println(result)
 	}
 
@@ -136,6 +135,6 @@ func RunShell(args ...string) error {
 
 func RunOutput(args ...string) (string, error) {
 	var shell = strings.Join(args, " ")
-	slog.Info("shell: " + shell)
+	log.Info().Msg("shell: " + shell)
 	return script.Exec(shell).String()
 }

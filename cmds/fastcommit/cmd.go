@@ -3,7 +3,6 @@ package fastcommit
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/env"
 	"github.com/pubgo/funk/errors"
+	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
 	"github.com/pubgo/funk/running"
 	"github.com/pubgo/funk/version"
@@ -52,8 +52,8 @@ func New(params Params) *Command {
 		},
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
 			branchName := configs.GetBranchName()
-			slog.Info("current branch: " + strings.TrimSpace(branchName))
-			slog.Info("config: " + configs.GetConfigPath())
+			log.Info().Msg("current branch: " + strings.TrimSpace(branchName))
+			log.Info().Msg("config: " + configs.GetConfigPath())
 			return ctx, nil
 		},
 		Commands: params.Cmd,
@@ -70,7 +70,7 @@ func New(params Params) *Command {
 			generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 
 			repoPath := assert.Must1(utils.AssertGitRepo())
-			slog.Info("git repo: " + repoPath)
+			log.Info().Msg("git repo: " + repoPath)
 
 			assert.Must(utils.RunShell("git", "add", "--update"))
 
@@ -83,7 +83,7 @@ func New(params Params) *Command {
 				return nil
 			}
 
-			slog.Info(utils.GetDetectedMessage(diff.Files))
+			log.Info().Msg(utils.GetDetectedMessage(diff.Files))
 
 			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 				s.Prefix = "generate git message: "
@@ -108,7 +108,7 @@ func New(params Params) *Command {
 			s.Stop()
 
 			if err != nil {
-				slog.Error("failed to call openai", "err", err)
+				log.Err(err).Msg("failed to call openai")
 				return errors.WrapCaller(err)
 			}
 
@@ -117,7 +117,7 @@ func New(params Params) *Command {
 			}
 
 			msg := resp.Choices[0].Message.Content
-			slog.Info("openai response git message", "msg", msg)
+			log.Info().Str("msg", msg).Msg("openai response git message")
 			var p1 = tea.NewProgram(InitialTextInputModel(msg))
 			mm := assert.Must1(p1.Run()).(model2)
 			if mm.isExit() {

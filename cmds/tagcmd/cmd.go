@@ -2,19 +2,18 @@ package tagcmd
 
 import (
 	"context"
-	"github.com/briandowns/spinner"
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
-	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/recovery"
 	"github.com/urfave/cli/v3"
 
-	_ "github.com/briandowns/spinner"
+	"github.com/pubgo/fastcommit/utils"
 )
 
 func New() *cli.Command {

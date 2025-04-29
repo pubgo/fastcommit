@@ -2,11 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
+	"github.com/pubgo/funk/log"
 )
 
 // KnownError 是一个自定义错误类型
@@ -80,7 +80,7 @@ func GitPushTag(ver string) {
 		return
 	}
 
-	slog.Info("git push tag " + ver)
+	log.Info().Msg("git push tag " + ver)
 	assert.Must(RunShell("git", "tag", ver))
 	assert.Must(RunShell("git", "push", "origin", ver))
 }

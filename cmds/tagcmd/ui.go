@@ -2,13 +2,13 @@ package tagcmd
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	semver "github.com/hashicorp/go-version"
+	"github.com/pubgo/funk/log"
 )
 
 const (
@@ -46,7 +46,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selected = m.choices[m.cursor%m.length]
 			return m, tea.Quit
 		default:
-			slog.Error("unknown key", "key", msg.String())
+			log.Error().Str("key", msg.String()).Msg("unknown key")
 			return m, tea.Quit
 		}
 	}

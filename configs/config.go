@@ -15,6 +15,10 @@ type EnvConfig struct {
 	Required    bool   `yaml:"required"`
 }
 
+func New() *Config {
+	return &Config{}
+}
+
 type Config struct {
 }
 

@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/lmittmann/tint v1.0.7
-	github.com/pubgo/dix v0.3.20-alpha.1
+	github.com/pubgo/dix v0.3.21-alpha.1
 	github.com/pubgo/funk v0.5.64-alpha.1
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.47.0
