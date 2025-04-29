@@ -32,6 +32,7 @@ type Params struct {
 }
 
 func New(params Params) *Command {
+	var showPrompt = false
 	app := &cli.Command{
 		Name:                   "fastcommit",
 		Suggest:                true,
@@ -40,6 +41,14 @@ func New(params Params) *Command {
 		Usage:                  "Intelligent generation of git commit message",
 		Version:                version.Version(),
 		Commands:               params.Cmd,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "show-prompt",
+				Usage:       "show prompt",
+				Value:       false,
+				Destination: &showPrompt,
+			},
+		},
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
 			if !term.IsTerminal(os.Stdin.Fd()) {
 				return ctx, fmt.Errorf("stdin is not a terminal")
@@ -117,7 +126,10 @@ func New(params Params) *Command {
 			msg = mm.Value()
 			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
 			assert.Must(utils.RunShell("git", "push", "origin", configs.GetBranchName()))
-			log.Info().Any("usage", resp.Usage).Str("prompt", generatePrompt).Msg("openai response usage")
+			if showPrompt {
+				fmt.Println(generatePrompt)
+			}
+			log.Info().Any("usage", resp.Usage).Msg("openai response usage")
 			return nil
 		},
 	}
