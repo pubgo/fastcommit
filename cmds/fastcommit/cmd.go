@@ -117,7 +117,7 @@ func New(params Params) *Command {
 			msg = mm.Value()
 			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
 			assert.Must(utils.RunShell("git", "push", "origin", configs.GetBranchName()))
-			log.Info().Any("usage", resp.Usage).Msg("openai response usage")
+			log.Info().Any("usage", resp.Usage).Str("prompt", generatePrompt).Msg("openai response usage")
 			return nil
 		},
 	}
