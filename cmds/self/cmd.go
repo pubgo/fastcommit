@@ -3,16 +3,18 @@ package selfcmd
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v71/github"
-	"github.com/hashicorp/go-getter"
-	"github.com/pubgo/funk/pretty"
-	"github.com/pubgo/funk/recovery"
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v3"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/google/go-github/v71/github"
+	"github.com/hashicorp/go-getter"
+	"github.com/olekukonko/tablewriter"
+	"github.com/pubgo/funk/pretty"
+	"github.com/pubgo/funk/recovery"
+	"github.com/samber/lo"
+	"github.com/urfave/cli/v3"
 )
 
 func New() *cli.Command {
@@ -25,12 +27,18 @@ func New() *cli.Command {
 				Action: func(ctx context.Context, command *cli.Command) error {
 					client := github.NewClient(http.DefaultClient)
 					releaseList, _ := lo.Must2(client.Repositories.ListReleases(ctx, "pubgo", "fastcommit", nil))
-					for _, r := range releaseList {
 
+					tt := tablewriter.NewWriter(os.Stdout)
+					tt.SetHeader([]string{"Tag", "Name", "Url"})
+					tt.SetBorder(true)
+					tt.SetRowLine(true)
+
+					for _, r := range releaseList {
 						for _, a := range r.Assets {
-							fmt.Println(lo.FromPtr(r.TagName), lo.FromPtr(a.Name), lo.FromPtr(a.BrowserDownloadURL))
+							tt.Append([]string{lo.FromPtr(r.TagName), lo.FromPtr(a.Name), lo.FromPtr(a.BrowserDownloadURL)})
 						}
 					}
+					tt.Render()
 					return nil
 				},
 			},

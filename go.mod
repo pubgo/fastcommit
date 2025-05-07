@@ -17,10 +17,10 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/cheggaaa/pb/v3 v3.1.7
-	github.com/fynelabs/selfupdate v0.2.0
 	github.com/google/go-github/v71 v71.0.0
 	github.com/hashicorp/go-getter v1.7.8
 	github.com/hashicorp/go-version v1.7.0
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pubgo/dix v0.3.21-alpha.1
 	github.com/pubgo/funk v0.5.65-alpha.2
 	github.com/rs/zerolog v1.33.0
