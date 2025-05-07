@@ -4,6 +4,7 @@ import (
 	_ "github.com/adrg/xdg"
 	_ "github.com/charmbracelet/bubbletea"
 	"github.com/pubgo/dix"
+	selfcmd "github.com/pubgo/fastcommit/cmds/self"
 	"github.com/pubgo/funk/config"
 	"github.com/pubgo/funk/recovery"
 	_ "github.com/sashabaranov/go-openai"
@@ -23,6 +24,7 @@ func Main() {
 
 	var di = dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
+	di.Provide(selfcmd.New)
 	di.Provide(configs.New)
 	di.Provide(tagcmd.New)
 	di.Provide(config.Load[ConfigProvider])
