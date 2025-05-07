@@ -8,10 +8,12 @@ builds:
       - GOPROXY=https://goproxy.io
     targets:
       - "darwin_amd64"
+      - "darwin_arm64"
       - "windows_amd64"
       - "linux_amd64"
+      - "linux_arm64"
     ldflags:
-      - -X 'github.com/pubgo/funk/version.version={{ .Version }}'
+      - -X 'github.com/pubgo/funk/version.version=v{{ .Version }}'
       - -X 'github.com/pubgo/funk/version.project=fastcommit'
       - -X 'github.com/pubgo/funk/version.buildTime={{ .CommitDate }}'
       - -X 'github.com/pubgo/funk/version.commitID={{ .ShortCommit }}'

@@ -29,13 +29,6 @@ type ProgressBar struct {
 	pbs int
 }
 
-func ProgressBarConfig(bar *pb.ProgressBar, prefix string) {
-	bar.Set("prefix", prefix)
-	//bar.SetTemplateString(fmt.Sprintf(`%s: {{with string . "prefix"}}{{.}} {{end}}{{counters . }} {{bar . }} {{percent . }} {{speed . }}{{with string . "suffix"}} {{.}}{{end}}`, prefix))
-	//bar.Prefix(prefix)
-	//bar.SetTemplateString()
-}
-
 // TrackProgress instantiates a new progress bar that will
 // display the progress of stream until closed.
 // total can be 0.
@@ -45,7 +38,7 @@ func (cpb *ProgressBar) TrackProgress(src string, currentSize, totalSize int64, 
 
 	newPb := pb.New64(totalSize)
 	newPb.SetCurrent(currentSize)
-	ProgressBarConfig(newPb, filepath.Base(src))
+	newPb.Set("prefix", filepath.Base(src))
 	if cpb.pool == nil {
 		cpb.pool = pb.NewPool()
 		cpb.pool.Start()

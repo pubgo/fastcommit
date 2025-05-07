@@ -2,16 +2,16 @@ package selfcmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/go-github/v71/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pubgo/funk/pretty"
+	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
@@ -46,34 +46,30 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			cli := github.NewClient(http.DefaultClient)
-			r, _ := lo.Must2(cli.Repositories.GetLatestRelease(context.Background(), "pubgo", "fastcommit"))
-			pretty.Println(r)
-			return nil
-			var sss = "https://github.com/pubgo/fastcommit/releases/download/v0.0.6-alpha.6/fastcommit_Darwin_x86_64.tar.gz"
-			var opts []getter.ClientOption
+			client := github.NewClient(http.DefaultClient)
+			r, _ := lo.Must2(client.Repositories.GetLatestRelease(context.Background(), "pubgo", "fastcommit"))
 
-			//ff := lo.Must(os.CreateTemp("fastcommit", "v0.0.6-alpha.6"))
+			var p = tea.NewProgram(initialModel(r))
+			mm := assert.Must1(p.Run()).(model)
 
-			fffff := filepath.Join(os.TempDir(), "fastcommit")
-			fmt.Println(fffff)
+			var downloadURL = mm.selected.GetBrowserDownloadURL()
+
+			downloadDir := filepath.Join(os.TempDir(), "fastcommit")
 			pwd := lo.Must(os.Getwd())
 
-			fmt.Println(runtime.GOOS)
-			fmt.Println(runtime.GOARCH)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			// Build the client
-			client := &getter.Client{
+			execFile := filepath.Base(os.Args[0])
+			execFile = lo.Must(exec.LookPath(execFile))
+
+			client1 := &getter.Client{
 				Ctx:              ctx,
-				Src:              sss,
-				Dst:              fffff,
+				Src:              downloadURL,
+				Dst:              downloadDir,
 				Pwd:              pwd,
 				Mode:             getter.ClientModeDir,
-				Options:          opts,
 				ProgressListener: defaultProgressBar,
 			}
-			lo.Must0(client.Get())
+			lo.Must0(client1.Get())
+			lo.Must0(os.Rename(downloadDir+"/fastcommit", execFile))
 
 			return nil
 		},
