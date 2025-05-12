@@ -1,4 +1,4 @@
-package selfcmd
+package upgradecmd
 
 import (
 	"fmt"

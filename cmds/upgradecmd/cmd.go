@@ -1,4 +1,4 @@
-package selfcmd
+package upgradecmd
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 
 func New() *cli.Command {
 	return &cli.Command{
-		Name:  "self",
+		Name:  "upgrade",
 		Usage: "self upgrade management",
 		Commands: []*cli.Command{
 			{
