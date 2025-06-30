@@ -2,5 +2,5 @@ version:
   name: "v0.0.1"
 openai:
   api_key: ${OPENAI_API_KEY}
-  base_url: ${OPENAI_BASE_URL:-"https://api.deepseek.com/v1"}
-  model: ${OPENAI_MODEL:-"deepseek-chat"}
+  base_url: ${OPENAI_BASE_URL}
+  model: ${OPENAI_MODEL}

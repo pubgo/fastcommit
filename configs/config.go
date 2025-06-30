@@ -7,8 +7,6 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/env"
 	"gopkg.in/yaml.v3"
-
-	"github.com/pubgo/fastcommit/utils"
 )
 
 const debugEnv = "ENABLE_DEBUG"
@@ -47,15 +45,6 @@ func GetConfigPath() string {
 
 	configPath = assert.Exit1(xdg.ConfigFile("fastcommit/config.yaml"))
 	return configPath
-}
-
-func GetBranchName() string {
-	if branchName != "" {
-		return branchName
-	}
-
-	branchName = assert.Exit1(utils.RunOutput("git", "rev-parse", "--abbrev-ref", "HEAD"))
-	return branchName
 }
 
 func GetDefaultConfig() []byte {

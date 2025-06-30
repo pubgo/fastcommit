@@ -125,7 +125,7 @@ func New(params Params) *Command {
 
 			msg = mm.Value()
 			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
-			assert.Must(utils.RunShell("git", "push", "origin", configs.GetBranchName()))
+			assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
 			if showPrompt {
 				fmt.Println("\n" + generatePrompt + "\n")
 			}
