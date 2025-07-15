@@ -2,15 +2,14 @@ package upgradecmd
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/go-github/v71/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pubgo/fastcommit/utils/githubclient"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
@@ -25,34 +24,41 @@ func New() *cli.Command {
 			{
 				Name: "list",
 				Action: func(ctx context.Context, command *cli.Command) error {
-					client := github.NewClient(http.DefaultClient)
-					releaseList, _ := lo.Must2(client.Repositories.ListReleases(ctx, "pubgo", "fastcommit", nil))
+					client := githubclient.NewPublicRelease("pubgo", "fastcommit")
+					releases := lo.Must(client.List(ctx))
 
 					tt := tablewriter.NewWriter(os.Stdout)
-					tt.SetHeader([]string{"Tag", "Name", "Url"})
-					tt.SetBorder(true)
-					tt.SetRowLine(true)
+					tt.Header([]string{"Name", "OS", "Arch", "Size", "Url"})
 
-					for _, r := range releaseList {
-						for _, a := range r.Assets {
-							tt.Append([]string{lo.FromPtr(r.TagName), lo.FromPtr(a.Name), lo.FromPtr(a.BrowserDownloadURL)})
+					for _, r := range releases {
+						for _, a := range githubclient.GetAssets(r) {
+							if a.IsChecksumFile() {
+								continue
+							}
+
+							lo.Must0(tt.Append([]string{
+								a.Name,
+								a.OS,
+								a.Arch,
+								githubclient.GetSizeFormat(a.Size),
+								a.URL,
+							}))
 						}
 					}
-					tt.Render()
-					return nil
+					return tt.Render()
 				},
 			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			client := github.NewClient(http.DefaultClient)
-			r, _ := lo.Must2(client.Repositories.GetLatestRelease(context.Background(), "pubgo", "fastcommit"))
+			client := githubclient.NewPublicRelease("pubgo", "fastcommit")
+			r := lo.Must(client.List(ctx))
 
-			var p = tea.NewProgram(initialModel(r))
+			var p = tea.NewProgram(initialModel(githubclient.GetAssetList(r)))
 			mm := assert.Must1(p.Run()).(model)
 
-			var downloadURL = mm.selected.GetBrowserDownloadURL()
+			var downloadURL = mm.selected.URL
 
 			downloadDir := filepath.Join(os.TempDir(), "fastcommit")
 			pwd := lo.Must(os.Getwd())

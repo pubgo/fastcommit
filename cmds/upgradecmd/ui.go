@@ -2,28 +2,25 @@ package upgradecmd
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/go-github/v71/github"
+	"github.com/pubgo/fastcommit/utils/githubclient"
 	"github.com/pubgo/funk/log"
 	"github.com/samber/lo"
 )
 
 type model struct {
 	cursor   int
-	assets   []*github.ReleaseAsset
-	selected *github.ReleaseAsset
+	assets   []githubclient.Asset
+	selected githubclient.Asset
 	length   int
 }
 
-func initialModel(rsp *github.RepositoryRelease) model {
+func initialModel(assets []githubclient.Asset) model {
+	assets = lo.Filter(assets, func(item githubclient.Asset, index int) bool { return !item.IsChecksumFile() })
 	return model{
-		assets: lo.Filter(rsp.Assets, func(item *github.ReleaseAsset, index int) bool {
-			return !strings.Contains(item.GetName(), "checksums") && strings.Contains(strings.ToLower(item.GetName()), strings.ToLower(runtime.GOOS))
-		}),
-		length: len(rsp.Assets) - 1,
+		assets: assets,
+		length: len(assets) - 1,
 	}
 }
 
@@ -58,7 +55,7 @@ func (m model) View() string {
 			cursor = ">"
 		}
 
-		s += fmt.Sprintf("%s %s\n", cursor, lo.FromPtr(choice.Name))
+		s += fmt.Sprintf("%s %s %s %s\n", cursor, choice.Name, choice.OS, choice.Arch)
 	}
 
 	return s
