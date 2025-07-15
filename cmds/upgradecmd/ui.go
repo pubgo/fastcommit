@@ -25,7 +25,7 @@ func initialModel(assets []githubclient.Asset) *model {
 	})
 	return &model{
 		assets: assets,
-		length: len(assets) - 1,
+		length: len(assets),
 	}
 }
 
@@ -40,12 +40,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyUp, tea.KeyLeft:
 			m.cursor--
 			if m.cursor <= 0 {
-				m.cursor = 0
+				m.cursor = m.length - 1
 			}
 		case tea.KeyDown, tea.KeyRight:
 			m.cursor++
 			if m.cursor == m.length {
-				m.cursor = m.length - 1
+				m.cursor = 0
 			}
 		case tea.KeyEnter:
 			m.selected = m.assets[m.cursor%m.length]
