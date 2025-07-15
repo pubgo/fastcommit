@@ -56,7 +56,7 @@ func New() *cli.Command {
 			r := lo.Must(client.List(ctx))
 
 			var p = tea.NewProgram(initialModel(githubclient.GetAssetList(r)))
-			mm := assert.Must1(p.Run()).(model)
+			mm := assert.Must1(p.Run()).(*model)
 
 			var downloadURL = mm.selected.URL
 
