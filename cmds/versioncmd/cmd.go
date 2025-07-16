@@ -3,7 +3,7 @@ package versioncmd
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/recovery"
 	"github.com/pubgo/funk/running"

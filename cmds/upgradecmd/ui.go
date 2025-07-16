@@ -39,7 +39,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyUp, tea.KeyLeft:
 			m.cursor--
-			if m.cursor <= 0 {
+			if m.cursor < 0 {
 				m.cursor = m.length - 1
 			}
 		case tea.KeyDown, tea.KeyRight:

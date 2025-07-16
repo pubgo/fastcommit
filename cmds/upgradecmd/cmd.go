@@ -11,7 +11,10 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pubgo/fastcommit/utils/githubclient"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/errors"
+	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 )
@@ -50,7 +53,12 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
-			defer recovery.Exit()
+			defer recovery.Exit(func(err error) error {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return err
+			})
 
 			client := githubclient.NewPublicRelease("pubgo", "fastcommit")
 			r := lo.Must(client.List(ctx))
@@ -66,7 +74,14 @@ func New() *cli.Command {
 			execFile := filepath.Base(os.Args[0])
 			execFile = lo.Must(exec.LookPath(execFile))
 
-			client1 := &getter.Client{
+			log.Info().Func(func(e *zerolog.Event) {
+				e.Str("download_dir", downloadDir)
+				e.Str("pwd", pwd)
+				e.Str("exec_file", execFile)
+				e.Msgf("start download %s", downloadURL)
+			})
+
+			c := &getter.Client{
 				Ctx:              ctx,
 				Src:              downloadURL,
 				Dst:              downloadDir,
@@ -74,7 +89,7 @@ func New() *cli.Command {
 				Mode:             getter.ClientModeDir,
 				ProgressListener: defaultProgressBar,
 			}
-			lo.Must0(client1.Get())
+			lo.Must0(c.Get())
 			lo.Must0(os.Rename(downloadDir+"/fastcommit", execFile))
 
 			return nil
