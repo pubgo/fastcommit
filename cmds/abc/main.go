@@ -37,7 +37,7 @@ type model struct {
 	err         error
 }
 
-func initialModel() model {
+func initialModel() *model {
 	ta := textinput.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -50,7 +50,7 @@ Type a message and press Enter to send.`)
 
 	//ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	return model{
+	return &model{
 		textarea:    ta,
 		messages:    []string{},
 		viewport:    vp,
@@ -59,11 +59,11 @@ Type a message and press Enter to send.`)
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -104,7 +104,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd)
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	return fmt.Sprintf(
 		"%s%s%s",
 		m.viewport.View(),
