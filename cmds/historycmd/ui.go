@@ -2,8 +2,6 @@ package historycmd
 
 import (
 	"fmt"
-	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/samber/lo"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -11,6 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/samber/lo"
 )
 
 const gap = "\n\n"
