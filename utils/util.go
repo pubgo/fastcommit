@@ -40,6 +40,13 @@ func GetAllGitTags() []*semver.Version {
 	return versions
 }
 
+func GetCurMaxVer() *semver.Version {
+	tags := GetAllGitTags()
+	return typex.DoBlock1(func() *semver.Version {
+		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+	})
+}
+
 func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })

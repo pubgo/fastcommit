@@ -135,7 +135,7 @@ func GetBranch() result.Result[string] {
 	})
 }
 
-func pushTag(tag string) result.Error {
+func PushTag(tag string) result.Error {
 	shell := fmt.Sprintf("git push origin %s", tag)
 	return result.ErrOf(script.Exec(shell).Error()).Map(func(err error) error {
 		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
