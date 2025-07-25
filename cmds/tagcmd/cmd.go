@@ -2,7 +2,6 @@ package tagcmd
 
 import (
 	"context"
-	"os"
 	"strings"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/recovery"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 
 	"github.com/pubgo/fastcommit/cmds/cmdutils"
@@ -20,18 +18,9 @@ import (
 )
 
 func New() *cli.Command {
-	var pushRelease bool
 	return &cli.Command{
 		Name:  "tag",
 		Usage: "gen tag and push origin",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "push",
-				Usage:       "release tag and push remote",
-				Value:       pushRelease,
-				Destination: &pushRelease,
-			},
-		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
@@ -70,12 +59,7 @@ func New() *cli.Command {
 				return errors.Errorf("tag name is not valid: %s", tagName)
 			}
 
-			lo.Must0(os.MkdirAll("version", 0755))
-			lo.Must0(os.WriteFile("version/.version", []byte(tagName), 0644))
-
-			if pushRelease {
-				utils.GitPushTag(tagName)
-			}
+			utils.GitPushTag(tagName)
 
 			return nil
 		},

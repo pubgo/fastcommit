@@ -128,7 +128,7 @@ func GetCommitCount(branch string) (r result.Result[int]) {
 	return r.WithValue(count)
 }
 
-func GetBranch() result.Result[string] {
+func GetCurrentBranch() result.Result[string] {
 	shell := "git branch --show-current"
 	return result.Wrap(script.Exec(shell).String()).MapErr(func(err error) error {
 		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)

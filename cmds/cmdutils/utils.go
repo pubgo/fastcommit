@@ -1,25 +1,14 @@
 package cmdutils
 
 import (
-	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/funk/assert"
 	"strings"
 
-	"github.com/pubgo/funk/log"
-
 	"github.com/pubgo/fastcommit/configs"
+	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/funk/log"
 )
 
-var curBranchName string
-
-func GetBranchName() string {
-	if curBranchName != "" {
-		return curBranchName
-	}
-
-	curBranchName = assert.Exit1(utils.RunOutput("git", "rev-parse", "--abbrev-ref", "HEAD"))
-	return curBranchName
-}
+var GetBranchName = utils.Once(func() string { return utils.GetCurrentBranch().Must() })
 
 func LoadConfigAndBranch() {
 	branchName := GetBranchName()

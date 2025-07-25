@@ -17,9 +17,8 @@ func New() *cli.Command {
 		Usage: utils.UsageDesc("%s version info", version.Project()),
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
-			ver := version.Version()
 			fmt.Println("project:", version.Project())
-			fmt.Println("version:", ver)
+			fmt.Println("version:", version.Version())
 			fmt.Println("commit-id:", version.CommitID())
 			fmt.Println("build-time:", version.BuildTime())
 			fmt.Println("instance-id:", running.InstanceID)
