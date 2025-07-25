@@ -2,11 +2,14 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/bitfield/script"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
+	"github.com/pubgo/funk/v2/result"
 )
 
 // KnownError 是一个自定义错误类型
@@ -87,4 +90,54 @@ func GitPushTag(ver string) {
 
 func GitFetchAll() {
 	assert.Must(RunShell("git", "fetch", "--tags"))
+}
+
+func IsDirty() (r result.Result[bool]) {
+	output := result.Wrap(script.Exec("git status --porcelain").String()).
+		MapErr(func(err error) error {
+			return fmt.Errorf("failed to run git: %w", err)
+		}).
+		UnwrapErr(&r)
+	if r.IsErr() {
+		return
+	}
+
+	return r.WithValue(len(strings.TrimSpace(string(output))) > 0)
+}
+
+func GetCommitCount(branch string) (r result.Result[int]) {
+	shell := fmt.Sprintf("git rev-list %s --count", branch)
+	output := result.Wrap(script.Exec(shell).String()).
+		MapErr(func(err error) error {
+			return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+		}).
+		UnwrapErr(&r)
+	if r.IsErr() {
+		return
+	}
+
+	count := result.Wrap(strconv.Atoi(strings.TrimSpace(output))).
+		MapErr(func(err error) error {
+			return fmt.Errorf("failed to parse git output: err=%w", err)
+		}).
+		UnwrapErr(&r)
+	if r.IsErr() {
+		return
+	}
+
+	return r.WithValue(count)
+}
+
+func GetBranch() result.Result[string] {
+	shell := "git branch --show-current"
+	return result.Wrap(script.Exec(shell).String()).MapErr(func(err error) error {
+		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+	})
+}
+
+func pushTag(tag string) result.Error {
+	shell := fmt.Sprintf("git push origin %s", tag)
+	return result.ErrOf(script.Exec(shell).Error()).Map(func(err error) error {
+		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+	})
 }
