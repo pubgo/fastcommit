@@ -25,6 +25,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pubgo/dix v0.3.21
 	github.com/pubgo/funk v0.5.68
 	github.com/rs/zerolog v1.34.0
