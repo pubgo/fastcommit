@@ -171,5 +171,9 @@ type Command struct {
 
 func (c *Command) Run() {
 	defer recovery.Exit()
-	assert.Must(c.cmd.Run(utils.Context(), os.Args))
+	err := c.cmd.Run(utils.Context(), os.Args)
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	assert.Must(err)
 }
