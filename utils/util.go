@@ -18,6 +18,29 @@ import (
 	"github.com/samber/lo"
 )
 
+func GetAllRemoteTags() []*semver.Version {
+	log.Info().Msg("get all remote tags")
+	output := assert.Exit1(RunOutput("git", "ls-remote", "--tags", "origin"))
+	return lo.Map(strings.Split(output, "\n"), func(item string, index int) *semver.Version {
+		item = strings.TrimSpace(item)
+		if !strings.HasPrefix(item, "refs/tags/") {
+			return nil
+		}
+
+		item = strings.TrimPrefix(item, "refs/tags/")
+		if !strings.HasPrefix(item, "v") {
+			return nil
+		}
+
+		vv, err := semver.NewSemver(item)
+		if err != nil {
+			log.Err(err).Str("tag", item).Msg("failed to parse git tag")
+			assert.Must(err)
+		}
+		return vv
+	})
+}
+
 func GetAllGitTags() []*semver.Version {
 	log.Info().Msg("get all tags")
 	var tagText = strings.TrimSpace(assert.Must1(RunOutput("git", "tag")))
