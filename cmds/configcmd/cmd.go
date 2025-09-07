@@ -3,13 +3,13 @@ package configcmd
 import (
 	"context"
 	"fmt"
-	"github.com/pubgo/funk/assert"
 	"os"
 	"path/filepath"
 
 	"github.com/bitfield/script"
 	"github.com/pkg/browser"
 	"github.com/pubgo/fastcommit/configs"
+	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
