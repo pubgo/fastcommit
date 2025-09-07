@@ -85,7 +85,7 @@ func GitPushTag(ver string) string {
 
 	log.Info().Msg("git push tag " + ver)
 	assert.Must(RunShell("git", "tag", ver))
-	return assert.Exit1(RunOutput("git", "push", "origin", ver))
+	return assert.Must1(RunOutput("git", "push", "origin", ver))
 }
 
 func GitFetchAll() {

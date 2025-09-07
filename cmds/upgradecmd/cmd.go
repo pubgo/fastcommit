@@ -2,14 +2,15 @@ package upgradecmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hashicorp/go-getter"
+	"github.com/hashicorp/go-version"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pubgo/fastcommit/utils/githubclient"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
@@ -17,6 +18,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
+	"github.com/yarlson/tap"
+
+	"github.com/pubgo/fastcommit/utils/githubclient"
 )
 
 func New() *cli.Command {
@@ -63,10 +67,30 @@ func New() *cli.Command {
 			client := githubclient.NewPublicRelease("pubgo", "fastcommit")
 			r := lo.Must(client.List(ctx))
 
-			var p = tea.NewProgram(initialModel(githubclient.GetAssetList(r)))
-			mm := assert.Must1(p.Run()).(*model)
+			assets := githubclient.GetAssetList(r)
+			assets = lo.Filter(assets, func(item githubclient.Asset, index int) bool { return !item.IsChecksumFile() })
+			sort.Slice(assets, func(i, j int) bool {
+				return lo.Must(version.NewSemver(assets[i].Name)).GreaterThan(lo.Must(version.NewSemver(assets[j].Name)))
+			})
 
-			var downloadURL = mm.selected.URL
+			if len(assets) > 20 {
+				assets = assets[:20]
+			}
+
+			result2 := tap.Select[string](context.Background(), tap.SelectOptions[string]{
+				Message: "Which frontend framework do you prefer?",
+				Options: lo.Map(assets, func(item githubclient.Asset, index int) tap.SelectOption[string] {
+					return tap.SelectOption[string]{
+						Value: item.Name,
+						Label: fmt.Sprintf("%s %s %s", item.Name, item.OS, item.Arch),
+					}
+				}),
+			})
+			fmt.Printf("\nYou chose: %s\n", result2)
+
+			asset, ok := lo.Find(assets, func(item githubclient.Asset) bool { return item.Name == result2 })
+			assert.If(!ok, "%s not found", result2)
+			var downloadURL = asset.URL
 
 			downloadDir := filepath.Join(os.TempDir(), "fastcommit")
 			pwd := lo.Must(os.Getwd())
