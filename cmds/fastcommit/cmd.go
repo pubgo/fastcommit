@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -81,6 +82,14 @@ func New(params Params) *Command {
 			}
 
 			cmdutils.LoadConfigAndBranch()
+
+			allTags := utils.GetAllGitTags()
+			tagName := "v0.0.1"
+			if len(allTags) > 0 {
+				ver := utils.GetNextReleaseTag(allTags)
+				tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
+			}
+			assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 
 			generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 

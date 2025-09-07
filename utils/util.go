@@ -168,3 +168,7 @@ func RunOutput(args ...string) (string, error) {
 	log.Info().Msg("shell: " + strings.TrimSpace(shell))
 	return script.Exec(shell).String()
 }
+
+func IsRemoteTagExist(err string) bool {
+	return strings.Contains(err, "[rejected]") && strings.Contains(err, "tag already exists")
+}

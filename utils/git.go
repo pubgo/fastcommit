@@ -78,18 +78,18 @@ func GetDetectedMessage(files []string) string {
 	return fmt.Sprintf("detected %d staged file%s", fileCount, pluralSuffix)
 }
 
-func GitPushTag(ver string) {
+func GitPushTag(ver string) string {
 	if ver == "" {
-		return
+		return ""
 	}
 
 	log.Info().Msg("git push tag " + ver)
 	assert.Must(RunShell("git", "tag", ver))
-	assert.Must(RunShell("git", "push", "origin", ver))
+	return assert.Exit1(RunOutput("git", "push", "origin", ver))
 }
 
 func GitFetchAll() {
-	assert.Must(RunShell("git", "fetch", "--tags"))
+	assert.Must(RunShell("git", "fetch", "--prune", "--tags"))
 }
 
 func IsDirty() (r result.Result[bool]) {
