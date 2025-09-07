@@ -70,7 +70,7 @@ func InitEnv() {
 			panic("env " + cfg.Name + " is required")
 		}
 
-		assert.Must(env.Set(name, cfg.Default))
+		env.Set(name, cfg.Default).Must()
 	}
 }
 

@@ -32,7 +32,7 @@ func New() *cli.Command {
 				Name: "list",
 				Action: func(ctx context.Context, command *cli.Command) error {
 					client := githubclient.NewPublicRelease("pubgo", "fastcommit")
-					releases := lo.Must(client.List(ctx))
+					releases := assert.Must1(client.List(ctx))
 
 					tt := tablewriter.NewWriter(os.Stdout)
 					tt.Header([]string{"Name", "OS", "Arch", "Size", "Url"})
@@ -43,7 +43,7 @@ func New() *cli.Command {
 								continue
 							}
 
-							lo.Must0(tt.Append([]string{
+							assert.Must(tt.Append([]string{
 								a.Name,
 								a.OS,
 								a.Arch,
@@ -61,16 +61,17 @@ func New() *cli.Command {
 				if errors.Is(err, context.Canceled) {
 					return nil
 				}
+				errors.Debug(err)
 				return err
 			})
 
 			client := githubclient.NewPublicRelease("pubgo", "fastcommit")
-			r := lo.Must(client.List(ctx))
+			r := assert.Must1(client.List(ctx))
 
 			assets := githubclient.GetAssetList(r)
 			assets = lo.Filter(assets, func(item githubclient.Asset, index int) bool { return !item.IsChecksumFile() })
 			sort.Slice(assets, func(i, j int) bool {
-				return lo.Must(version.NewSemver(assets[i].Name)).GreaterThan(lo.Must(version.NewSemver(assets[j].Name)))
+				return assert.Must1(version.NewSemver(assets[i].Name)).GreaterThan(lo.Must(version.NewSemver(assets[j].Name)))
 			})
 
 			if len(assets) > 20 {
@@ -93,10 +94,10 @@ func New() *cli.Command {
 			var downloadURL = asset.URL
 
 			downloadDir := filepath.Join(os.TempDir(), "fastcommit")
-			pwd := lo.Must(os.Getwd())
+			pwd := assert.Must1(os.Getwd())
 
 			execFile := filepath.Base(os.Args[0])
-			execFile = lo.Must(exec.LookPath(execFile))
+			execFile = assert.Must1(exec.LookPath(execFile))
 
 			log.Info().Func(func(e *zerolog.Event) {
 				e.Str("download_dir", downloadDir)
@@ -113,8 +114,8 @@ func New() *cli.Command {
 				Mode:             getter.ClientModeDir,
 				ProgressListener: defaultProgressBar,
 			}
-			lo.Must0(c.Get())
-			lo.Must0(os.Rename(downloadDir+"/fastcommit", execFile))
+			assert.Must(c.Get())
+			assert.Must(os.Rename(downloadDir+"/fastcommit", execFile))
 
 			return nil
 		},

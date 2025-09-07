@@ -12,7 +12,6 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 )
 
@@ -26,7 +25,7 @@ func New() *cli.Command {
 			cfgPath := configs.GetConfigPath()
 			log.Info().Msgf("config path: %s", cfgPath)
 
-			log.Info().Msgf("config data: \n%s", lo.Must(os.ReadFile(cfgPath)))
+			log.Info().Msgf("config data: \n%s", assert.Must1(os.ReadFile(cfgPath)))
 			return nil
 		},
 		Commands: []*cli.Command{

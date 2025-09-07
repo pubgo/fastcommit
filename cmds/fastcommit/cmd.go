@@ -16,7 +16,6 @@ import (
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
-	"github.com/pubgo/funk/version"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
 
@@ -32,137 +31,140 @@ type Params struct {
 	OpenaiClient *utils.OpenaiClient
 }
 
-func New(params Params) *Command {
-	var showPrompt = false
-	app := &cli.Command{
-		Name:                   "fastcommit",
-		Suggest:                true,
-		UseShortOptionHandling: true,
-		ShellComplete:          cli.DefaultAppComplete,
-		Usage:                  "Intelligent generation of git commit message",
-		Version:                version.Version(),
-		Commands:               params.Cmd,
-		EnableShellCompletion:  true,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "prompt",
-				Usage:       "show prompt",
-				Value:       false,
-				Destination: &showPrompt,
-			},
-		},
-		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
-			if !term.IsTerminal(os.Stdin.Fd()) {
-				return ctx, fmt.Errorf("stdin is not terminal")
-			}
+func New(version string) func(params Params) *Command {
+	return func(params Params) *Command {
 
-			if utils.IsHelp() {
-				return ctx, cli.ShowAppHelp(command)
-			}
-			return ctx, nil
-		},
-		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-			defer recovery.Exit(func(err error) error {
-				if errors.Is(err, context.Canceled) {
+		var showPrompt = false
+		app := &cli.Command{
+			Name:                   "fastcommit",
+			Suggest:                true,
+			UseShortOptionHandling: true,
+			ShellComplete:          cli.DefaultAppComplete,
+			Usage:                  "Intelligent generation of git commit message",
+			Version:                version,
+			Commands:               params.Cmd,
+			EnableShellCompletion:  true,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:        "prompt",
+					Usage:       "show prompt",
+					Value:       false,
+					Destination: &showPrompt,
+				},
+			},
+			Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
+				if !term.IsTerminal(os.Stdin.Fd()) {
+					return ctx, fmt.Errorf("stdin is not terminal")
+				}
+
+				if utils.IsHelp() {
+					return ctx, cli.ShowAppHelp(command)
+				}
+				return ctx, nil
+			},
+			Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+				defer recovery.Exit(func(err error) error {
+					if errors.Is(err, context.Canceled) {
+						return nil
+					}
+					return err
+				})
+
+				defer func() {
+					if errors.Is(gErr, context.Canceled) {
+						gErr = nil
+					}
+				}()
+
+				if command.Args().Len() > 0 {
+					log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
+					cli.ShowRootCommandHelpAndExit(command, 1)
 					return nil
 				}
-				return err
-			})
 
-			defer func() {
-				if errors.Is(gErr, context.Canceled) {
-					gErr = nil
+				cmdutils.LoadConfigAndBranch()
+
+				allTags := utils.GetAllGitTags()
+				tagName := "v0.0.1"
+				if len(allTags) > 0 {
+					ver := utils.GetNextReleaseTag(allTags)
+					tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
 				}
-			}()
+				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 
-			if command.Args().Len() > 0 {
-				log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
-				cli.ShowRootCommandHelpAndExit(command, 1)
-				return nil
-			}
+				generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 
-			cmdutils.LoadConfigAndBranch()
+				repoPath := assert.Must1(utils.AssertGitRepo())
+				log.Info().Msg("git repo: " + repoPath)
 
-			allTags := utils.GetAllGitTags()
-			tagName := "v0.0.1"
-			if len(allTags) > 0 {
-				ver := utils.GetNextReleaseTag(allTags)
-				tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
-			}
-			assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
+				assert.Must(utils.RunShell("git", "add", "--update"))
 
-			generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
+				diff := assert.Must1(utils.GetStagedDiff(nil))
+				if diff == nil {
+					return nil
+				}
 
-			repoPath := assert.Must1(utils.AssertGitRepo())
-			log.Info().Msg("git repo: " + repoPath)
+				if len(diff.Files) == 0 {
+					return nil
+				}
 
-			assert.Must(utils.RunShell("git", "add", "--update"))
+				log.Info().Msg(utils.GetDetectedMessage(diff.Files))
+				for _, file := range diff.Files {
+					log.Info().Msg("file: " + file)
+				}
 
-			diff := assert.Must1(utils.GetStagedDiff(nil))
-			if diff == nil {
-				return nil
-			}
-
-			if len(diff.Files) == 0 {
-				return nil
-			}
-
-			log.Info().Msg(utils.GetDetectedMessage(diff.Files))
-			for _, file := range diff.Files {
-				log.Info().Msg("file: " + file)
-			}
-
-			s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
-				s.Prefix = "generate git message: "
-			})
-			s.Start()
-			resp, err := params.OpenaiClient.Client.CreateChatCompletion(
-				ctx,
-				openai.ChatCompletionRequest{
-					Model: params.OpenaiClient.Cfg.Model,
-					Messages: []openai.ChatCompletionMessage{
-						{
-							Role:    openai.ChatMessageRoleSystem,
-							Content: generatePrompt,
-						},
-						{
-							Role:    openai.ChatMessageRoleUser,
-							Content: diff.Diff,
+				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+					s.Prefix = "generate git message: "
+				})
+				s.Start()
+				resp, err := params.OpenaiClient.Client.CreateChatCompletion(
+					ctx,
+					openai.ChatCompletionRequest{
+						Model: params.OpenaiClient.Cfg.Model,
+						Messages: []openai.ChatCompletionMessage{
+							{
+								Role:    openai.ChatMessageRoleSystem,
+								Content: generatePrompt,
+							},
+							{
+								Role:    openai.ChatMessageRoleUser,
+								Content: diff.Diff,
+							},
 						},
 					},
-				},
-			)
-			s.Stop()
+				)
+				s.Stop()
 
-			if err != nil {
-				log.Err(err).Msg("failed to call openai")
-				return errors.WrapCaller(err)
-			}
+				if err != nil {
+					log.Err(err).Msg("failed to call openai")
+					return errors.WrapCaller(err)
+				}
 
-			if len(resp.Choices) == 0 {
+				if len(resp.Choices) == 0 {
+					return nil
+				}
+
+				msg := resp.Choices[0].Message.Content
+				var p1 = tea.NewProgram(InitialTextInputModel(msg))
+				mm := assert.Must1(p1.Run()).(model2)
+				if mm.isExit() {
+					return nil
+				}
+
+				msg = mm.Value()
+				assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
+				assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
+				if showPrompt {
+					fmt.Println("\n" + generatePrompt + "\n")
+				}
+				log.Info().Any("usage", resp.Usage).Msg("openai response usage")
 				return nil
-			}
+			},
+		}
 
-			msg := resp.Choices[0].Message.Content
-			var p1 = tea.NewProgram(InitialTextInputModel(msg))
-			mm := assert.Must1(p1.Run()).(model2)
-			if mm.isExit() {
-				return nil
-			}
-
-			msg = mm.Value()
-			assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
-			assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
-			if showPrompt {
-				fmt.Println("\n" + generatePrompt + "\n")
-			}
-			log.Info().Any("usage", resp.Usage).Msg("openai response usage")
-			return nil
-		},
+		sort.Sort(cli.FlagsByName(app.Flags))
+		return &Command{cmd: app}
 	}
-
-	sort.Sort(cli.FlagsByName(app.Flags))
-	return &Command{cmd: app}
 }
 
 type Command struct {
@@ -171,5 +173,9 @@ type Command struct {
 
 func (c *Command) Run() {
 	defer recovery.Exit()
-	assert.Must(c.cmd.Run(utils.Context(), os.Args))
+	err := c.cmd.Run(utils.Context(), os.Args)
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	assert.Must(err)
 }
