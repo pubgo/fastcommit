@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 
 	"github.com/bitfield/script"
@@ -18,15 +17,6 @@ import (
 	"github.com/pubgo/funk/typex"
 	"github.com/samber/lo"
 )
-
-func Once[T any](do func() T) func() T {
-	var once sync.Once
-	var data T
-	return func() T {
-		once.Do(func() { data = do() })
-		return data
-	}
-}
 
 func GetAllGitTags() []*semver.Version {
 	log.Info().Msg("get all tags")

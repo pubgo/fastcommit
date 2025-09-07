@@ -31,7 +31,7 @@ require (
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
 	github.com/stretchr/testify v1.10.0
-	github.com/urfave/cli/v3 v3.3.8
+	github.com/urfave/cli/v3 v3.4.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 

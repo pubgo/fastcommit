@@ -41,9 +41,10 @@ func New(params Params) *Command {
 		Usage:                  "Intelligent generation of git commit message",
 		Version:                version.Version(),
 		Commands:               params.Cmd,
+		EnableShellCompletion:  true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:        "show-prompt",
+				Name:        "prompt",
 				Usage:       "show prompt",
 				Value:       false,
 				Destination: &showPrompt,
@@ -51,7 +52,7 @@ func New(params Params) *Command {
 		},
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
 			if !term.IsTerminal(os.Stdin.Fd()) {
-				return ctx, fmt.Errorf("stdin is not a terminal")
+				return ctx, fmt.Errorf("stdin is not terminal")
 			}
 
 			if utils.IsHelp() {
@@ -59,8 +60,25 @@ func New(params Params) *Command {
 			}
 			return ctx, nil
 		},
-		Action: func(ctx context.Context, command *cli.Command) error {
-			defer recovery.Exit()
+		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+			defer recovery.Exit(func(err error) error {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return err
+			})
+
+			defer func() {
+				if errors.Is(gErr, context.Canceled) {
+					gErr = nil
+				}
+			}()
+
+			if command.Args().Len() > 0 {
+				log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
+				cli.ShowRootCommandHelpAndExit(command, 1)
+				return nil
+			}
 
 			cmdutils.LoadConfigAndBranch()
 
