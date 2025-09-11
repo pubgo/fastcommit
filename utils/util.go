@@ -177,3 +177,7 @@ func RunOutput(args ...string) (string, error) {
 func IsRemoteTagExist(err string) bool {
 	return strings.Contains(err, "[rejected]") && strings.Contains(err, "tag already exists")
 }
+
+func IsRemotePushCommitFailed(err string) bool {
+	return strings.Contains(err, "[rejected]") && strings.Contains(err, "failed to push some refs to")
+}
