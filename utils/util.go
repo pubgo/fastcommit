@@ -1,26 +1,31 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
-	"github.com/bitfield/script"
+	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/typex"
+	"github.com/pubgo/funk/v2/result"
 	"github.com/samber/lo"
+	"mvdan.cc/sh/v3/shell"
 )
 
-func GetAllRemoteTags() []*semver.Version {
+func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all remote tags")
-	output := assert.Exit1(RunOutput("git", "ls-remote", "--tags", "origin"))
+	output := assert.Exit1(RunOutput(ctx, "git", "ls-remote", "--tags", "origin"))
 	return lo.Map(strings.Split(output, "\n"), func(item string, index int) *semver.Version {
 		item = strings.TrimSpace(item)
 		if !strings.HasPrefix(item, "refs/tags/") {
@@ -41,9 +46,9 @@ func GetAllRemoteTags() []*semver.Version {
 	})
 }
 
-func GetAllGitTags() []*semver.Version {
+func GetAllGitTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all tags")
-	var tagText = strings.TrimSpace(assert.Must1(RunOutput("git", "tag")))
+	var tagText = strings.TrimSpace(assert.Must1(RunOutput(ctx, "git", "tag")))
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -63,8 +68,8 @@ func GetAllGitTags() []*semver.Version {
 	return versions
 }
 
-func GetCurMaxVer() *semver.Version {
-	tags := GetAllGitTags()
+func GetCurMaxVer(ctx context.Context) *semver.Version {
+	tags := GetAllGitTags(ctx)
 	return typex.DoBlock1(func() *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
@@ -148,30 +153,32 @@ func IsHelp() bool {
 	return false
 }
 
-func RunShell(args ...string) error {
-	result, err := RunOutput(args...)
+func RunShell(ctx context.Context, args ...string) error {
+	now := time.Now()
+	res, err := RunOutput(ctx, args...)
 	if err != nil {
 		return errors.WrapCaller(err)
 	}
 
-	result = strings.TrimSpace(result)
-	if result != "" {
-		log.Info().Msg("shell result")
-		fmt.Println(result)
+	if res != "" {
+		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
 	}
 
 	return nil
 }
 
-func RunOutput(args ...string) (string, error) {
-	var shell = strings.Join(args, " ")
-	log.Info().Msg("shell: " + strings.TrimSpace(shell))
-	output, err := script.Exec(shell).String()
-	if err != nil {
-		log.Err(err).Msg("shell exec error")
-		return "", err
-	}
-	return output, nil
+func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
+	defer result.Recovery(&gErr)
+
+	var cmdLine = strings.Join(args, " ")
+	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
+
+	args = result.Wrap(shell.Fields(cmdLine, nil)).Log().Must()
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	output := result.Wrap(cmd.Output()).
+		Map(func(data []byte) []byte { return bytes.TrimSpace(data) }).
+		Log().Must()
+	return string(output), nil
 }
 
 func IsRemoteTagExist(err string) bool {
@@ -180,4 +187,11 @@ func IsRemoteTagExist(err string) bool {
 
 func IsRemotePushCommitFailed(err string) bool {
 	return strings.Contains(err, "[rejected]") && strings.Contains(err, "failed to push some refs to")
+}
+
+func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
+	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = name })
+	s.Start()
+	defer s.Stop()
+	return do()
 }

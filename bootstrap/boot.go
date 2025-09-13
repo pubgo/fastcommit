@@ -1,10 +1,13 @@
 package bootstrap
 
 import (
+	"log/slog"
+
 	_ "github.com/adrg/xdg"
 	_ "github.com/charmbracelet/bubbletea"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/funk/config"
+	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
 	_ "github.com/sashabaranov/go-openai"
 
@@ -21,6 +24,8 @@ import (
 
 func Main(ver string) {
 	defer recovery.Exit()
+
+	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
 
 	initConfig()
 
