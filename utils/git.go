@@ -130,9 +130,13 @@ func GetCommitCount(branch string) (r result.Result[int]) {
 
 func GetCurrentBranch() result.Result[string] {
 	shell := "git branch --show-current"
-	return result.Wrap(script.Exec(shell).String()).MapErr(func(err error) error {
-		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
-	})
+	return result.Wrap(script.Exec(shell).String()).
+		Map(func(s string) string {
+			return strings.TrimSpace(s)
+		}).
+		MapErr(func(err error) error {
+			return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+		})
 }
 
 func PushTag(tag string) result.Error {

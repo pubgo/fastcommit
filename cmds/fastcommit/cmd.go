@@ -3,6 +3,7 @@ package fastcommit
 import (
 	"context"
 	"fmt"
+	"github.com/yarlson/tap"
 	"os"
 	"sort"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix"
 	"github.com/pubgo/funk/assert"
@@ -110,14 +110,20 @@ func New(version string) func(params Params) *Command {
 				repoPath := assert.Must1(utils.AssertGitRepo())
 				log.Info().Msg("git repo: " + repoPath)
 
-				username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
+				//username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
 
 				if flags.fastCommit {
-					assert.Must(utils.RunShell("git", "add", "-A"))
+					preMsg := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "log", "-1", "--pretty=%B")))
+					prefixMsg := fmt.Sprintf("chore: quick update %s", cmdutils.GetBranchName())
+					msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
-					msg := fmt.Sprintf("chore: @%s quick update %s at %s", username, cmdutils.GetBranchName(), time.Now().Format(time.DateTime))
-					assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
-					assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
+					assert.Must(utils.RunShell("git", "add", "-A"))
+					if strings.Contains(preMsg, prefixMsg) {
+						assert.Must(utils.RunShell("git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
+					} else {
+						assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
+					}
+					assert.Must(utils.RunShell("git", "push", "--force-with-lease", "origin", cmdutils.GetBranchName()))
 					return
 				}
 
@@ -166,13 +172,19 @@ func New(version string) func(params Params) *Command {
 				}
 
 				msg := resp.Choices[0].Message.Content
-				var p1 = tea.NewProgram(InitialTextInputModel(msg))
-				mm := assert.Must1(p1.Run()).(model2)
-				if mm.isExit() {
-					return nil
-				}
+				msg = tap.Text(ctx, tap.TextOptions{
+					Message:      "git message(update or enter) >> ",
+					DefaultValue: msg,
+					Placeholder:  "Type something...",
+				})
 
-				msg = mm.Value()
+				//var p1 = tea.NewProgram(initialTextInputModel(msg))
+				//mm := assert.Must1(p1.Run()).(model2)
+				//if mm.isExit() {
+				//	return nil
+				//}
+
+				//msg = mm.Value()
 				assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
 				assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
 				if flags.showPrompt {

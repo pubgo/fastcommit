@@ -10,7 +10,7 @@ type model2 struct {
 	exit      bool
 }
 
-func InitialTextInputModel(data string) model2 {
+func initialTextInputModel(data string) model2 {
 	ti := textinput.New()
 	ti.Focus()
 	ti.Prompt = "git message(update or enter) >> "

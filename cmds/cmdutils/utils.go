@@ -1,7 +1,6 @@
 package cmdutils
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/pubgo/fastcommit/configs"
@@ -13,6 +12,6 @@ var GetBranchName = sync.OnceValue(func() string { return utils.GetCurrentBranch
 
 func LoadConfigAndBranch() {
 	branchName := GetBranchName()
-	log.Info().Msg("current branch: " + strings.TrimSpace(branchName))
+	log.Info().Msg("current branch: " + branchName)
 	log.Info().Msg("config: " + configs.GetConfigPath())
 }
