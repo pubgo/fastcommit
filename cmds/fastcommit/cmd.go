@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/v2/result"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
 
@@ -33,8 +35,10 @@ type Params struct {
 
 func New(version string) func(params Params) *Command {
 	return func(params Params) *Command {
-
-		var showPrompt = false
+		var flags = new(struct {
+			showPrompt bool
+			fastCommit bool
+		})
 		app := &cli.Command{
 			Name:                   "fastcommit",
 			Suggest:                true,
@@ -48,8 +52,14 @@ func New(version string) func(params Params) *Command {
 				&cli.BoolFlag{
 					Name:        "prompt",
 					Usage:       "show prompt",
-					Value:       false,
-					Destination: &showPrompt,
+					Value:       flags.showPrompt,
+					Destination: &flags.showPrompt,
+				},
+				&cli.BoolFlag{
+					Name:        "fast",
+					Usage:       "quickly generate messages without prompts",
+					Value:       flags.fastCommit,
+					Destination: &flags.fastCommit,
 				},
 			},
 			Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
@@ -63,7 +73,7 @@ func New(version string) func(params Params) *Command {
 				return ctx, nil
 			},
 			Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-				defer recovery.Exit(func(err error) error {
+				defer result.Recovery(&gErr, func(err error) error {
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
@@ -82,6 +92,11 @@ func New(version string) func(params Params) *Command {
 					return nil
 				}
 
+				isDirty := utils.IsDirty().Must()
+				if !isDirty {
+					return
+				}
+
 				cmdutils.LoadConfigAndBranch()
 
 				allTags := utils.GetAllGitTags()
@@ -92,19 +107,24 @@ func New(version string) func(params Params) *Command {
 				}
 				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 
-				generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
-
 				repoPath := assert.Must1(utils.AssertGitRepo())
 				log.Info().Msg("git repo: " + repoPath)
+
+				username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
+
+				if flags.fastCommit {
+					assert.Must(utils.RunShell("git", "add", "-A"))
+
+					msg := fmt.Sprintf("chore: @%s quick update %s at %s", username, cmdutils.GetBranchName(), time.Now().Format(time.DateTime))
+					assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
+					assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
+					return
+				}
 
 				assert.Must(utils.RunShell("git", "add", "--update"))
 
 				diff := assert.Must1(utils.GetStagedDiff(nil))
-				if diff == nil {
-					return nil
-				}
-
-				if len(diff.Files) == 0 {
+				if diff == nil || len(diff.Files) == 0 {
 					return nil
 				}
 
@@ -117,6 +137,7 @@ func New(version string) func(params Params) *Command {
 					s.Prefix = "generate git message: "
 				})
 				s.Start()
+				generatePrompt := utils.GeneratePrompt("en", 50, utils.ConventionalCommitType)
 				resp, err := params.OpenaiClient.Client.CreateChatCompletion(
 					ctx,
 					openai.ChatCompletionRequest{
@@ -152,9 +173,9 @@ func New(version string) func(params Params) *Command {
 				}
 
 				msg = mm.Value()
-				assert.Must(utils.RunShell("git", "commit", "-m", fmt.Sprintf("'%s'", msg)))
+				assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
 				assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
-				if showPrompt {
+				if flags.showPrompt {
 					fmt.Println("\n" + generatePrompt + "\n")
 				}
 				log.Info().Any("usage", resp.Usage).Msg("openai response usage")
@@ -172,10 +193,11 @@ type Command struct {
 }
 
 func (c *Command) Run() {
-	defer recovery.Exit()
-	err := c.cmd.Run(utils.Context(), os.Args)
-	if errors.Is(err, context.Canceled) {
-		return
-	}
-	assert.Must(err)
+	defer recovery.Exit(func(err error) error {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
+	})
+	assert.Must(c.cmd.Run(utils.Context(), os.Args))
 }

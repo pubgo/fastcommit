@@ -49,7 +49,6 @@ func (m model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View is called to draw the textinput step
 func (m model2) View() string {
 	return m.textInput.View()
 }
