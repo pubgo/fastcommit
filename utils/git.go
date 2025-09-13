@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -22,8 +23,8 @@ func (e *KnownError) Error() string {
 }
 
 // AssertGitRepo 检查当前目录是否是 Git 仓库
-func AssertGitRepo() (string, error) {
-	output, err := RunOutput("git", "rev-parse", "--show-toplevel")
+func AssertGitRepo(ctx context.Context) (string, error) {
+	output, err := RunOutput(ctx, "git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", &KnownError{Message: "The current directory must be a Git repository!"}
 	}
@@ -42,11 +43,11 @@ type GetStagedDiffRsp struct {
 }
 
 // GetStagedDiff 获取暂存区的差异
-func GetStagedDiff(excludeFiles []string) (*GetStagedDiffRsp, error) {
+func GetStagedDiff(ctx context.Context, excludeFiles ...string) (*GetStagedDiffRsp, error) {
 	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	filesOutput, err := RunOutput(append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
+	filesOutput, err := RunOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
 	if err != nil {
 		return nil, errors.WrapCaller(err)
 	}
@@ -57,7 +58,7 @@ func GetStagedDiff(excludeFiles []string) (*GetStagedDiffRsp, error) {
 	}
 
 	// 获取暂存区的完整差异
-	diffOutput, err := RunOutput(append(diffCached, excludeFiles...)...)
+	diffOutput, err := RunOutput(ctx, append(diffCached, excludeFiles...)...)
 	if err != nil {
 		return nil, errors.WrapCaller(err)
 	}
@@ -78,18 +79,18 @@ func GetDetectedMessage(files []string) string {
 	return fmt.Sprintf("detected %d staged file%s", fileCount, pluralSuffix)
 }
 
-func GitPushTag(ver string) string {
+func GitPushTag(ctx context.Context, ver string) string {
 	if ver == "" {
 		return ""
 	}
 
 	log.Info().Msg("git push tag " + ver)
-	assert.Must(RunShell("git", "tag", ver))
-	return assert.Must1(RunOutput("git", "push", "origin", ver))
+	assert.Must(RunShell(ctx, "git", "tag", ver))
+	return assert.Must1(RunOutput(ctx, "git", "push", "origin", ver))
 }
 
-func GitFetchAll() {
-	assert.Must(RunShell("git", "fetch", "--prune", "--tags"))
+func GitFetchAll(ctx context.Context) {
+	assert.Must(RunShell(ctx, "git", "fetch", "--prune", "--tags"))
 }
 
 func IsDirty() (r result.Result[bool]) {

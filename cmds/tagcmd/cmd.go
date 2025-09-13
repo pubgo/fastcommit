@@ -25,7 +25,7 @@ func New() *cli.Command {
 			defer recovery.Exit()
 
 			cmdutils.LoadConfigAndBranch()
-			
+
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
 			selected := strings.TrimSpace(m.selected)
@@ -33,7 +33,7 @@ func New() *cli.Command {
 				return nil
 			}
 
-			tags := utils.GetAllGitTags()
+			tags := utils.GetAllGitTags(ctx)
 			ver := utils.GetNextTag(selected, tags)
 			if selected == envRelease {
 				ver = utils.GetNextReleaseTag(tags)
@@ -52,13 +52,13 @@ func New() *cli.Command {
 				return errors.Errorf("tag name is not valid: %s", tagName)
 			}
 
-			output := utils.GitPushTag(tagName)
+			output := utils.GitPushTag(ctx, tagName)
 			if utils.IsRemoteTagExist(output) {
 				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 					s.Prefix = "fetch git tag: "
 				})
 				s.Start()
-				utils.GitFetchAll()
+				utils.GitFetchAll(ctx)
 				s.Stop()
 			}
 

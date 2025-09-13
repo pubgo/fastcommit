@@ -3,7 +3,6 @@ package fastcommit
 import (
 	"context"
 	"fmt"
-	"github.com/yarlson/tap"
 	"os"
 	"sort"
 	"strconv"
@@ -20,6 +19,7 @@ import (
 	"github.com/pubgo/funk/v2/result"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
+	"github.com/yarlson/tap"
 
 	"github.com/pubgo/fastcommit/cmds/cmdutils"
 	"github.com/pubgo/fastcommit/configs"
@@ -77,14 +77,13 @@ func New(version string) func(params Params) *Command {
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
+
+					if err.Error() == "signal: interrupt" {
+						return nil
+					}
+
 					return err
 				})
-
-				defer func() {
-					if errors.Is(gErr, context.Canceled) {
-						gErr = nil
-					}
-				}()
 
 				if command.Args().Len() > 0 {
 					log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
@@ -99,7 +98,7 @@ func New(version string) func(params Params) *Command {
 
 				cmdutils.LoadConfigAndBranch()
 
-				allTags := utils.GetAllGitTags()
+				allTags := utils.GetAllGitTags(ctx)
 				tagName := "v0.0.1"
 				if len(allTags) > 0 {
 					ver := utils.GetNextReleaseTag(allTags)
@@ -107,29 +106,36 @@ func New(version string) func(params Params) *Command {
 				}
 				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 
-				repoPath := assert.Must1(utils.AssertGitRepo())
+				repoPath := assert.Must1(utils.AssertGitRepo(ctx))
 				log.Info().Msg("git repo: " + repoPath)
 
 				//username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
 
 				if flags.fastCommit {
-					preMsg := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "log", "-1", "--pretty=%B")))
+					preMsg := strings.TrimSpace(assert.Must1(utils.RunOutput(ctx, "git", "log", "-1", "--pretty=%B")))
 					prefixMsg := fmt.Sprintf("chore: quick update %s", cmdutils.GetBranchName())
 					msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
-					assert.Must(utils.RunShell("git", "add", "-A"))
+					assert.Must(utils.RunShell(ctx, "git", "add", "-A"))
 					if strings.Contains(preMsg, prefixMsg) {
-						assert.Must(utils.RunShell("git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
+						assert.Must(utils.RunShell(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
 					} else {
-						assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
+						assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 					}
-					assert.Must(utils.RunShell("git", "push", "--force-with-lease", "origin", cmdutils.GetBranchName()))
+
+					s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+						s.Prefix = "push git message: "
+					})
+					s.Start()
+					result.ErrOf(utils.RunShell(ctx, "git", "push", "--force-with-lease", "origin", cmdutils.GetBranchName())).
+						Log().Must()
+					s.Stop()
 					return
 				}
 
-				assert.Must(utils.RunShell("git", "add", "--update"))
+				assert.Must(utils.RunShell(ctx, "git", "add", "--update"))
 
-				diff := assert.Must1(utils.GetStagedDiff(nil))
+				diff := assert.Must1(utils.GetStagedDiff(ctx))
 				if diff == nil || len(diff.Files) == 0 {
 					return nil
 				}
@@ -172,31 +178,24 @@ func New(version string) func(params Params) *Command {
 				}
 
 				msg := resp.Choices[0].Message.Content
-				msg = tap.Text(ctx, tap.TextOptions{
-					Message:      "git message(update or enter) >> ",
+				msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+					Message:      "git message(update or enter):",
 					InitialValue: msg,
 					DefaultValue: msg,
 					Placeholder:  "update or enter",
-				})
+				}))
 
 				if msg == "" {
 					return
 				}
 
-				//var p1 = tea.NewProgram(initialTextInputModel(msg))
-				//mm := assert.Must1(p1.Run()).(model2)
-				//if mm.isExit() {
-				//	return nil
-				//}
-
-				//msg = mm.Value()
-				assert.Must(utils.RunShell("git", "commit", "-m", strconv.Quote(msg)))
-				assert.Must(utils.RunShell("git", "push", "origin", cmdutils.GetBranchName()))
+				assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
+				assert.Must(utils.RunShell(ctx, "git", "push", "origin", cmdutils.GetBranchName()))
 				if flags.showPrompt {
 					fmt.Println("\n" + generatePrompt + "\n")
 				}
 				log.Info().Any("usage", resp.Usage).Msg("openai response usage")
-				return nil
+				return
 			},
 		}
 

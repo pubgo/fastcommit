@@ -27,7 +27,7 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pubgo/dix v0.3.21
-	github.com/pubgo/funk v0.5.69-alpha.21
+	github.com/pubgo/funk v0.5.69-alpha.23
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
@@ -35,6 +35,7 @@ require (
 	github.com/urfave/cli/v3 v3.4.1
 	github.com/yarlson/tap v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
+	mvdan.cc/sh/v3 v3.12.0
 )
 
 require (
@@ -140,5 +141,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-	mvdan.cc/sh/v3 v3.12.0 // indirect
 )
