@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/pubgo/dix/dixinternal"
+	"github.com/pubgo/fastcommit/cmds/fastcommit"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/config"
 	"github.com/pubgo/funk/log"
@@ -18,6 +19,7 @@ import (
 type ConfigProvider struct {
 	Version      *configs.Version    `yaml:"version"`
 	OpenaiConfig *utils.OpenaiConfig `yaml:"openai"`
+	CommitConfig *fastcommit.Config  `yaml:"commit"`
 }
 
 func initConfig() {

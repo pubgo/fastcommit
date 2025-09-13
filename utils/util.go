@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -173,12 +173,46 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 	var cmdLine = strings.Join(args, " ")
 	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
 
-	args = result.Wrap(shell.Fields(cmdLine, nil)).Log().Must()
+	args, err := shell.Fields(cmdLine, nil)
+	if err != nil {
+		return "", err
+	}
+
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	output := result.Wrap(cmd.Output()).
-		Map(func(data []byte) []byte { return bytes.TrimSpace(data) }).
-		Log().Must()
-	return string(output), nil
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return "", err
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return "", err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return "", err
+	}
+
+	var output []byte
+	if bytes, err := io.ReadAll(stdout); err != nil {
+		return "", err
+	} else {
+		output = bytes
+	}
+
+	if bytes, err := io.ReadAll(stdErr); err != nil {
+		return "", err
+	} else {
+		output = append(output, bytes...)
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }
 
 func IsRemoteTagExist(err string) bool {

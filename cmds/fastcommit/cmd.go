@@ -26,11 +26,16 @@ import (
 	"github.com/pubgo/fastcommit/utils"
 )
 
+type Config struct {
+	GenVersion bool `yaml:"gen_version"`
+}
+
 type Params struct {
 	Di           *dix.Dix
 	Cmd          []*cli.Command
 	Cfg          *configs.Config
 	OpenaiClient *utils.OpenaiClient
+	CommitCfg    []*Config
 }
 
 func New(version string) func(params Params) *Command {
@@ -98,13 +103,20 @@ func New(version string) func(params Params) *Command {
 
 				cmdutils.LoadConfigAndBranch()
 
-				allTags := utils.GetAllGitTags(ctx)
-				tagName := "v0.0.1"
-				if len(allTags) > 0 {
-					ver := utils.GetNextReleaseTag(allTags)
-					tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
+				for _, cfg := range params.CommitCfg {
+					if !cfg.GenVersion {
+						continue
+					}
+
+					allTags := utils.GetAllGitTags(ctx)
+					tagName := "v0.0.1"
+					if len(allTags) > 0 {
+						ver := utils.GetNextReleaseTag(allTags)
+						tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
+					}
+					assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
+					break
 				}
-				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 
 				repoPath := assert.Must1(utils.AssertGitRepo(ctx))
 				log.Info().Msg("git repo: " + repoPath)

@@ -2,25 +2,44 @@ package historycmd
 
 import (
 	"context"
-	tea "github.com/charmbracelet/bubbletea"
-	mapset "github.com/deckarep/golang-set/v2"
 	"os"
 	"strconv"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 )
 
+var path = "/Users/barry/Documents/git/zshrc.history"
+
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "history",
 		Usage: "shell history command management",
+		Commands: []*cli.Command{
+			{
+				Name: "rewrite",
+				Action: func(ctx context.Context, command *cli.Command) error {
+					var data = lo.Must(os.ReadFile(path))
+					var set = mapset.NewSet[string]()
+					for _, line := range strings.Split(string(data), "\n") {
+						lines := strings.SplitN(strings.TrimSpace(line), " ", 2)
+						if len(lines) == 2 && isNumber(strings.Trim(strings.TrimSpace(lines[0]), "*")) {
+							line = strings.TrimSpace(lines[1])
+						}
+						line = strings.TrimSpace(line)
+						set.Add(line)
+					}
+					return os.WriteFile(path, []byte(strings.Join(set.ToSlice(), "\n")), 0644)
+				},
+			},
+		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			var path = "/Users/barry/Documents/git/zshrc.history"
 			var data = lo.Must(os.ReadFile(path))
 			var set = mapset.NewSet[string]()
 			for _, line := range strings.Split(string(data), "\n") {
