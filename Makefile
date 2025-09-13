@@ -1,5 +1,6 @@
 Project=fastcommit
 Base=github.com/pubgo/funk
+# git describe --tags --always --dirty
 VERSION := $(shell git tag --sort=committerdate | tail -n 1)
 GIT_COMMIT := $(shell git describe --always --abbrev=7 --dirty)
 BUILD_TIME := $(shell date "+%F %T")

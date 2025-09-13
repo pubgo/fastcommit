@@ -1,7 +1,15 @@
 package main
 
-import "github.com/pubgo/fastcommit/bootstrap"
+import (
+	_ "embed"
+
+	_ "github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/pubgo/fastcommit/bootstrap"
+)
+
+//go:embed .version
+var version string
 
 func main() {
-	bootstrap.Main()
+	bootstrap.Main(version)
 }

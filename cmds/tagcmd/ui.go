@@ -2,13 +2,19 @@ package tagcmd
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	semver "github.com/hashicorp/go-version"
+	"github.com/pubgo/funk/log"
+)
+
+const (
+	envAlpha   = "alpha"
+	envBeta    = "beta"
+	envRelease = "release"
 )
 
 type model struct {
@@ -19,7 +25,7 @@ type model struct {
 }
 
 func initialModel() model {
-	choices := []string{"alpha", "beta", "release"}
+	choices := []string{envAlpha, envBeta, envRelease}
 	return model{
 		choices: choices,
 		length:  len(choices),
@@ -40,7 +46,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selected = m.choices[m.cursor%m.length]
 			return m, tea.Quit
 		default:
-			slog.Error("unknown key", "key", msg.String())
+			log.Error().Str("key", msg.String()).Msg("unknown key")
 			return m, tea.Quit
 		}
 	}
@@ -164,7 +170,7 @@ func (m model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View is called to draw the textinput step
 func (m model2) View() string {
 	return fmt.Sprintf(
-		"tag: %s\n",
+		"new tag: %s\n",
 		m.textInput.View(),
 	)
 }

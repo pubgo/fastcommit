@@ -2,17 +2,17 @@ package tagcmd
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
-	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/v2/result"
 	"github.com/urfave/cli/v3"
+	"strings"
+
+	"github.com/pubgo/fastcommit/cmds/cmdutils"
+	"github.com/pubgo/fastcommit/utils"
 )
 
 func New() *cli.Command {
@@ -21,11 +21,19 @@ func New() *cli.Command {
 		Usage: "gen tag and push origin",
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
+
+			cmdutils.LoadConfigAndBranch()
+
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
-			var tags = utils.GetGitTags()
-			ver := utils.GetNextTag(m.selected, tags)
-			if m.selected == "release" {
+			selected := strings.TrimSpace(m.selected)
+			if selected == "" {
+				return nil
+			}
+
+			tags := utils.GetAllGitTags(ctx)
+			ver := utils.GetNextTag(selected, tags)
+			if selected == envRelease {
 				ver = utils.GetNextReleaseTag(tags)
 			}
 
@@ -39,10 +47,19 @@ func New() *cli.Command {
 			tagName = m1.Value()
 			_, err := semver.NewVersion(tagName)
 			if err != nil {
-				return errors.Format("tag name is not valid: %s", tagName)
+				return errors.Errorf("tag name is not valid: %s", tagName)
 			}
-			slog.Info(fmt.Sprintf("selected tag: %s", tagName))
-			utils.GitPushTag(tagName)
+
+			output := utils.Spin("push tag: ", func() (r result.Result[string]) {
+				return r.WithValue(utils.GitPushTag(ctx, tagName))
+			}).Log().Must()
+			if utils.IsRemoteTagExist(output) {
+				utils.Spin("fetch git tag: ", func() (r result.Result[any]) {
+					utils.GitFetchAll(ctx)
+					return
+				})
+			}
+
 			return nil
 		},
 	}

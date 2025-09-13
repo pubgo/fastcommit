@@ -4,9 +4,12 @@ import (
 	_ "embed"
 
 	"github.com/adrg/xdg"
-	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/env"
+	"gopkg.in/yaml.v3"
 )
+
+const debugEnv = "ENABLE_DEBUG"
 
 type EnvConfig struct {
 	Description string `yaml:"description"`
@@ -15,16 +18,19 @@ type EnvConfig struct {
 	Required    bool   `yaml:"required"`
 }
 
+func New() *Config {
+	return &Config{}
+}
+
 type Config struct {
-	BranchName string
 }
 
 type Version struct {
 	Name string `yaml:"name"`
 }
 
-var configPath = assert.Exit1(xdg.ConfigFile("fastcommit/config.yaml"))
-var branchName = assert.Exit1(utils.RunOutput("git", "rev-parse", "--abbrev-ref", "HEAD"))
+var configPath string
+var branchName string
 
 //go:embed default.yaml
 var defaultConfig []byte
@@ -33,11 +39,12 @@ var defaultConfig []byte
 var envConfig []byte
 
 func GetConfigPath() string {
-	return configPath
-}
+	if configPath != "" {
+		return configPath
+	}
 
-func GetBranchName() string {
-	return branchName
+	configPath = assert.Exit1(xdg.ConfigFile("fastcommit/config.yaml"))
+	return configPath
 }
 
 func GetDefaultConfig() []byte {
@@ -46,4 +53,38 @@ func GetDefaultConfig() []byte {
 
 func GetEnvConfig() []byte {
 	return envConfig
+}
+
+func InitEnv() {
+	envMap := GetEnvMap()
+	for name, cfg := range envMap {
+		envData := env.Get(name)
+		if envData == "" {
+			continue
+		}
+		cfg.Default = envData
+	}
+
+	for name, cfg := range envMap {
+		if cfg.Required && cfg.Default == "" {
+			panic("env " + cfg.Name + " is required")
+		}
+
+		env.Set(name, cfg.Default).Must()
+	}
+}
+
+func GetEnvMap() map[string]*EnvConfig {
+	var envData = GetEnvConfig()
+	var envMap = make(map[string]*EnvConfig)
+	assert.Must(yaml.Unmarshal(envData, &envMap))
+	for name := range envMap {
+		envMap[name].Name = name
+	}
+	return envMap
+}
+
+func IsDebug() (debug bool) {
+	env.GetBoolVal(&debug, debugEnv)
+	return
 }
