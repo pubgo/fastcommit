@@ -174,9 +174,14 @@ func New(version string) func(params Params) *Command {
 				msg := resp.Choices[0].Message.Content
 				msg = tap.Text(ctx, tap.TextOptions{
 					Message:      "git message(update or enter) >> ",
+					InitialValue: msg,
 					DefaultValue: msg,
-					Placeholder:  "Type something...",
+					Placeholder:  "update or enter",
 				})
+
+				if msg == "" {
+					return
+				}
 
 				//var p1 = tea.NewProgram(initialTextInputModel(msg))
 				//mm := assert.Must1(p1.Run()).(model2)
