@@ -213,7 +213,9 @@ func (c *Command) Run() {
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
-		return err
+
+		log.Err(err).Msg("failed to run command")
+		return nil
 	})
 	assert.Must(c.cmd.Run(utils.Context(), os.Args))
 }
