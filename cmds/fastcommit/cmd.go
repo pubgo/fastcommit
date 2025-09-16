@@ -78,7 +78,7 @@ func New(version string) func(params Params) *Command {
 				return ctx, nil
 			},
 			Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-				defer result.Recovery(&gErr, func(err error) error {
+				defer result.RecoveryErr(&gErr, func(err error) error {
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
@@ -128,6 +128,17 @@ func New(version string) func(params Params) *Command {
 					prefixMsg := fmt.Sprintf("chore: quick update %s", cmdutils.GetBranchName())
 					msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
+					msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+						Message:      "git message(update or enter):",
+						InitialValue: msg,
+						DefaultValue: msg,
+						Placeholder:  "update or enter",
+					}))
+
+					if msg == "" {
+						return
+					}
+
 					assert.Must(utils.RunShell(ctx, "git", "add", "-A"))
 					if strings.Contains(preMsg, prefixMsg) {
 						assert.Must(utils.RunShell(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
@@ -139,8 +150,7 @@ func New(version string) func(params Params) *Command {
 						s.Prefix = "push git message: "
 					})
 					s.Start()
-					result.ErrOf(utils.RunShell(ctx, "git", "push", "--force-with-lease", "origin", cmdutils.GetBranchName())).
-						Log().Must()
+					assert.Must(utils.RunShell(ctx, "git", "push", "--force-with-lease", "origin", cmdutils.GetBranchName()))
 					s.Stop()
 					return
 				}

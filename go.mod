@@ -21,13 +21,13 @@ require (
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/docker/go-units v0.5.0
 	github.com/google/go-github/v71 v71.0.0
-	github.com/hashicorp/go-getter v1.7.8
+	github.com/hashicorp/go-getter v1.7.9
 	github.com/hashicorp/go-version v1.7.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pubgo/dix v0.3.21
-	github.com/pubgo/funk v0.5.69-alpha.24
+	github.com/pubgo/dix v0.3.23-alpha.3
+	github.com/pubgo/funk v0.5.69-alpha.32
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
@@ -99,7 +99,6 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect

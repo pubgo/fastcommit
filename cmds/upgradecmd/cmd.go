@@ -64,7 +64,7 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-			defer result.Recovery(&gErr, func(err error) error {
+			defer result.RecoveryErr(&gErr, func(err error) error {
 				if errors.Is(err, context.Canceled) {
 					return nil
 				}
