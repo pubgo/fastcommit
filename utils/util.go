@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,16 +10,18 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
+	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/typex"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"mvdan.cc/sh/v3/shell"
 )
@@ -153,12 +156,10 @@ func IsHelp() bool {
 	return false
 }
 
-func RunShell(ctx context.Context, args ...string) error {
+func RunShell(ctx context.Context, args ...string) (err error) {
+	defer result.RecoveryErr(&err)
 	now := time.Now()
-	res, err := RunOutput(ctx, args...)
-	if err != nil {
-		return errors.WrapCaller(err)
-	}
+	res := result.Wrap(RunOutput(ctx, args...)).Must()
 
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -168,48 +169,32 @@ func RunShell(ctx context.Context, args ...string) error {
 }
 
 func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
-	defer result.Recovery(&gErr)
+	defer result.RecoveryErr(&gErr)
 
 	var cmdLine = strings.Join(args, " ")
 	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
 
-	args, err := shell.Fields(cmdLine, nil)
-	if err != nil {
-		return "", err
-	}
-
+	args = result.Wrap(shell.Fields(cmdLine, nil)).Must(func(e *zerolog.Event) {
+		e.Str("shell", cmdLine)
+	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	stdErr, err := cmd.StderrPipe()
-	if err != nil {
-		return "", err
-	}
+	var stdout bytes.Buffer
+	cmd.Stdout = io.MultiWriter(&stdout)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
+	var stderr bytes.Buffer
+	cmd.Stderr = io.MultiWriter(&stderr)
 
-	err = cmd.Start()
-	if err != nil {
-		return "", err
+	var event = func(e *zerolog.Event) {
+		e.Str("stdout", stdout.String())
+		e.Str("stderr", stderr.String())
 	}
+	result.ErrOf(cmd.Start()).Must(event)
+	result.ErrOf(cmd.Wait()).Must(event)
 
-	err = cmd.Wait()
-	if err != nil {
-		return "", err
-	}
-
-	var output []byte
-	if bytes, err := io.ReadAll(stdout); err != nil {
-		return "", err
-	} else {
-		output = bytes
-	}
-
-	if bytes, err := io.ReadAll(stdErr); err != nil {
-		return "", err
-	} else {
-		output = append(output, bytes...)
+	output := stdout.Bytes()
+	if stderr.Len() > 0 {
+		output = append(output, '\n')
+		output = append(output, stderr.Bytes()...)
 	}
 
 	return strings.TrimSpace(string(output)), nil
@@ -228,4 +213,27 @@ func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
 	s.Start()
 	defer s.Stop()
 	return do()
+}
+
+func PreGitPush(ctx context.Context) {
+	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
+	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
+	if !needPush {
+		return
+	}
+
+	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+		s.Prefix = "push git message: "
+	})
+	s.Start()
+	assert.Must(RunShell(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()))
+	s.Stop()
+}
+
+var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
+
+func LoadConfigAndBranch() {
+	branchName := GetBranchName()
+	log.Info().Msg("branch: " + branchName)
+	log.Info().Msg("config: " + configs.GetConfigPath())
 }

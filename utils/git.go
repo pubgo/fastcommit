@@ -10,7 +10,9 @@ import (
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
+	"github.com/pubgo/funk/log/logfields"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/rs/zerolog"
 )
 
 // KnownError 是一个自定义错误类型
@@ -95,38 +97,27 @@ func GitFetchAll(ctx context.Context) {
 
 func IsDirty() (r result.Result[bool]) {
 	output := result.Wrap(script.Exec("git status --porcelain").String()).
-		MapErr(func(err error) error {
-			return fmt.Errorf("failed to run git: %w", err)
-		}).
-		UnwrapErr(&r)
-	if r.IsErr() {
-		return
-	}
+		Log(func(e *zerolog.Event) {
+			e.Str(logfields.Msg, "failed to run git")
+		})
 
-	return r.WithValue(len(strings.TrimSpace(string(output))) > 0)
+	return result.MapTo(output, func(output string) bool {
+		return len(strings.TrimSpace(output)) > 0
+	})
 }
 
 func GetCommitCount(branch string) (r result.Result[int]) {
 	shell := fmt.Sprintf("git rev-list %s --count", branch)
-	output := result.Wrap(script.Exec(shell).String()).
-		MapErr(func(err error) error {
-			return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
-		}).
-		UnwrapErr(&r)
-	if r.IsErr() {
-		return
-	}
+	output := result.Wrap(script.Exec(shell).String()).Log(func(e *zerolog.Event) {
+		e.Str(logfields.Msg, fmt.Sprintf("failed to run shell %q", shell))
+	})
 
-	count := result.Wrap(strconv.Atoi(strings.TrimSpace(output))).
-		MapErr(func(err error) error {
-			return fmt.Errorf("failed to parse git output: err=%w", err)
-		}).
-		UnwrapErr(&r)
-	if r.IsErr() {
-		return
-	}
-
-	return r.WithValue(count)
+	return result.FlatMapTo(output, func(count string) result.Result[int] {
+		count = strings.TrimSpace(count)
+		return result.Wrap(strconv.Atoi(count)).Log(func(e *zerolog.Event) {
+			e.Str(logfields.Msg, "failed to parse git output")
+		})
+	})
 }
 
 func GetCurrentBranch() result.Result[string] {
