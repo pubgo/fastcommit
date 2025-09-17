@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 
-	_ "github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/pubgo/fastcommit/bootstrap"
 )
 

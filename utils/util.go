@@ -10,11 +10,13 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
+	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/typex"
@@ -211,4 +213,27 @@ func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
 	s.Start()
 	defer s.Stop()
 	return do()
+}
+
+func PreGitPush(ctx context.Context) {
+	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
+	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
+	if !needPush {
+		return
+	}
+
+	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+		s.Prefix = "push git message: "
+	})
+	s.Start()
+	assert.Must(RunShell(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()))
+	s.Stop()
+}
+
+var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
+
+func LoadConfigAndBranch() {
+	branchName := GetBranchName()
+	log.Info().Msg("branch: " + branchName)
+	log.Info().Msg("config: " + configs.GetConfigPath())
 }

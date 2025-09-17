@@ -9,6 +9,7 @@ replace (
 )
 
 require (
+	atomicgo.dev/cursor v0.2.0
 	github.com/adrg/xdg v0.5.3
 	github.com/bitfield/script v0.24.1
 	github.com/briandowns/spinner v1.23.2
@@ -20,6 +21,7 @@ require (
 	github.com/dave/jennifer v1.7.0
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/docker/go-units v0.5.0
+	github.com/fatih/color v1.18.0
 	github.com/google/go-github/v71 v71.0.0
 	github.com/hashicorp/go-getter v1.7.9
 	github.com/hashicorp/go-version v1.7.0
@@ -70,7 +72,6 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/expr-lang/expr v1.17.5 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

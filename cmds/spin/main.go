@@ -7,9 +7,15 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/fatih/color"
 )
 
 func main() {
+	for {
+		color.Output.Write([]byte("\rhello world"))
+		time.Sleep(time.Second)
+	}
+	return
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond) // Build our new spinner
 	s.Color("red")                                              // Set the spinner color to red
 	s.Start()                                                   // Start the spinner

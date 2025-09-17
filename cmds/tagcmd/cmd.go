@@ -2,6 +2,8 @@ package tagcmd
 
 import (
 	"context"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/assert"
@@ -9,9 +11,7 @@ import (
 	"github.com/pubgo/funk/recovery"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/urfave/cli/v3"
-	"strings"
 
-	"github.com/pubgo/fastcommit/cmds/cmdutils"
 	"github.com/pubgo/fastcommit/utils"
 )
 
@@ -22,7 +22,7 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			cmdutils.LoadConfigAndBranch()
+			utils.LoadConfigAndBranch()
 
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)

@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/pubgo/dix/dixinternal"
-	"github.com/pubgo/fastcommit/cmds/fastcommit"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/config"
 	"github.com/pubgo/funk/log"
@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pubgo/fastcommit/cmds/fastcommit"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
 )
@@ -23,13 +24,15 @@ type ConfigProvider struct {
 }
 
 func initConfig() {
+	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
+
 	configs.InitEnv()
 
 	dixinternal.SetLog(func(logger log.Logger) log.Logger {
 		if configs.IsDebug() {
 			return logger.WithLevel(zerolog.DebugLevel)
 		}
-		return logger.WithLevel(zerolog.InfoLevel)
+		return logger.WithLevel(zerolog.ErrorLevel)
 	})
 
 	configPath := configs.GetConfigPath()
