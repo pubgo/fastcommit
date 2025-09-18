@@ -88,6 +88,10 @@ func (c *Command) Run() {
 			return nil
 		}
 
+		if err.Error() == "signal: interrupt" {
+			return nil
+		}
+
 		log.Err(err).Msg("failed to run command")
 		return nil
 	})

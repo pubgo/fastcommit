@@ -18,11 +18,14 @@ import (
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/typex"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
+	"github.com/tidwall/match"
+	_ "github.com/tidwall/match"
 	"mvdan.cc/sh/v3/shell"
 )
 
@@ -169,7 +172,13 @@ func RunShell(ctx context.Context, args ...string) (err error) {
 }
 
 func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
-	defer result.RecoveryErr(&gErr)
+	defer result.RecoveryErr(&gErr, func(err error) error {
+		if exitErr, ok := errors.AsA[exec.ExitError](err); ok && exitErr.String() == "signal: interrupt" {
+			os.Exit(1)
+		}
+
+		return err
+	})
 
 	var cmdLine = strings.Join(args, " ")
 	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
@@ -188,8 +197,8 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 		e.Str("stdout", stdout.String())
 		e.Str("stderr", stderr.String())
 	}
-	result.ErrOf(cmd.Start()).Must(event)
-	result.ErrOf(cmd.Wait()).Must(event)
+	result.Must(cmd.Start(), event)
+	result.Must(cmd.Wait(), event)
 
 	output := stdout.Bytes()
 	if stderr.Len() > 0 {
@@ -218,6 +227,11 @@ func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
 func PreGitPush(ctx context.Context) {
 	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
+	if !needPush {
+		needPush = match.Match(res, fmt.Sprintf("Your branch and '*%s' have diverged", GetBranchName())) &&
+			strings.Contains(result.Wrap(RunOutput(ctx, "git", "reflog", "-1")).Must(), "(amend)")
+	}
+
 	if !needPush {
 		return
 	}

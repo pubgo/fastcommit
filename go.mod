@@ -28,12 +28,13 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pubgo/dix v0.3.23-alpha.3
-	github.com/pubgo/funk v0.5.69-alpha.32
+	github.com/pubgo/dix v0.3.23-alpha.4
+	github.com/pubgo/funk v0.5.69-alpha.35
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
 	github.com/stretchr/testify v1.10.0
+	github.com/tidwall/match v1.1.1
 	github.com/urfave/cli/v3 v3.4.1
 	github.com/yarlson/tap v0.9.0
 	google.golang.org/genai v1.24.0

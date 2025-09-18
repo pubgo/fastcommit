@@ -866,10 +866,10 @@ github.com/prometheus/client_model v0.4.0/go.mod h1:oMQmHW1/JoDwqLtg57MGgP/Fb1CJ
 github.com/prometheus/client_model v0.5.0/go.mod h1:dTiFglRmd66nLR9Pv9f0mZi7B7fk5Pm3gvsjB5tr+kI=
 github.com/prometheus/client_model v0.6.0/go.mod h1:NTQHnmxFpouOD0DpvP4XujX3CdOAGQPoaGhyTchlyt8=
 github.com/prometheus/client_model v0.6.1/go.mod h1:OrxVMOVHjw3lKMa8+x6HeMGkHMQyHDk9E3jmP2AmGiY=
-github.com/pubgo/dix v0.3.23-alpha.3 h1:LcelZ4oP+HY7e5SFyH5tezDI4zNbUgM6kwA/bcCoP2g=
-github.com/pubgo/dix v0.3.23-alpha.3/go.mod h1:i5OCqZ7/VZPMDqPv3TCm3C6yf8dezdZHWwg85UwwslQ=
-github.com/pubgo/funk v0.5.69-alpha.32 h1:fcPNN+qyu3bMyOlxv/7qd3ls0eEyTOPp1ZySy8TKx7c=
-github.com/pubgo/funk v0.5.69-alpha.32/go.mod h1:dBFx3ZnM6IML9tqK23ROTB9xX0Q27dLXUxAoSuh5mMI=
+github.com/pubgo/dix v0.3.23-alpha.4 h1:XuNq/VKa7Y+EzcAfxRfRooEWKWuDBUjjwZ4BlBm4qbg=
+github.com/pubgo/dix v0.3.23-alpha.4/go.mod h1:mSZIGE9yBrlXihcdXXLj+DbuYcnC4WxtNtNkHiQLf7c=
+github.com/pubgo/funk v0.5.69-alpha.35 h1:mbTvNhk7reOczKgiMWMisGdsTOgMTDzwrCr1EB1KwC0=
+github.com/pubgo/funk v0.5.69-alpha.35/go.mod h1:dBFx3ZnM6IML9tqK23ROTB9xX0Q27dLXUxAoSuh5mMI=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
