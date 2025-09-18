@@ -2,6 +2,7 @@ package tagcmd
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,12 +14,30 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/fastcommit/utils/fzfutil"
 )
 
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "tag",
 		Usage: "gen tag and push origin",
+		Commands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "list all tags",
+				Action: func(ctx context.Context, command *cli.Command) error {
+					var tagText = strings.TrimSpace(assert.Must1(utils.RunOutput(ctx,
+						"git", "tag", "-n", "--sort=-committerdate")))
+					tag, err := fzfutil.SelectWithFzf(ctx, strings.NewReader(tagText))
+					if err != nil {
+						return err
+					}
+
+					fmt.Println(tag)
+					return nil
+				},
+			},
+		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 

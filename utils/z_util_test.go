@@ -1,10 +1,15 @@
 package utils_test
 
 import (
+	"context"
+	"fmt"
+	"github.com/pubgo/funk/v2/result"
+	"strings"
 	"testing"
 
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/tidwall/match"
 )
 
 func TestErrTagExists(t *testing.T) {
@@ -14,4 +19,11 @@ To github.com:pubgo/funk.git
 error: failed to push some refs to 'github.com:pubgo/funk.git'
 hint: Updates were rejected because the tag already exists in the remote.`
 	assert.Equal(t, utils.IsRemoteTagExist(errMsg), true)
+}
+
+func TestMatch(t *testing.T) {
+	var txt = `Your branch and 'origin/feat/genai' have diverged`
+	t.Log(match.Match(txt, fmt.Sprintf("Your branch and '*feat/genai' have diverged")))
+
+	t.Log(strings.Contains(result.Wrap(utils.RunOutput(context.Background(), "git", "reflog", "-1")).Must(), "(amend)"))
 }

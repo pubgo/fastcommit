@@ -27,7 +27,7 @@ func SelectWithFzf(ctx context.Context, input io.Reader) (string, error) {
 		"--reverse",
 		"--border",
 		"--prompt", "Select: ",
-		"--header", "Press ESC to cancel",
+		//"--header", "Press ESC to cancel",
 		"--ansi", // Enable color support
 	)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/pubgo/dix/dixinternal"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/config"
+	"github.com/pubgo/funk/env"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/pathutil"
 	"github.com/rs/zerolog"
@@ -24,6 +25,7 @@ type ConfigProvider struct {
 }
 
 func initConfig() {
+	env.Set("LC_ALL", "C").Must()
 	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
 
 	configs.InitEnv()
