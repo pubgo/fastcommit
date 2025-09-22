@@ -20,7 +20,7 @@ import (
 	"github.com/pubgo/fastcommit/utils"
 )
 
-func Main(ver string) {
+func Main() {
 	defer recovery.Exit()
 
 	initConfig()
@@ -34,7 +34,7 @@ func Main(ver string) {
 	di.Provide(utils.NewOpenaiClient)
 	di.Provide(envcmd.New)
 	di.Provide(historycmd.New)
-	di.Provide(fastcommit.New(ver))
+	di.Provide(fastcommit.New)
 	di.Provide(fastcommitcmd.New)
 	di.Provide(configcmd.New)
 	di.Inject(func(cmd *fastcommit.Command) { cmd.Run() })

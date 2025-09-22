@@ -180,8 +180,13 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 		return err
 	})
 
-	var cmdLine = strings.Join(args, " ")
-	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
+	sh := getShell()
+	if sh != "" {
+		args = []string{sh, "-c", fmt.Sprintf(`'%s'`, strings.Join(args, " "))}
+	}
+
+	cmdLine := strings.TrimSpace(strings.Join(args, " "))
+	log.Info().Msgf("shell: %s", cmdLine)
 
 	args = result.Wrap(shell.Fields(cmdLine, nil)).Must(func(e *zerolog.Event) {
 		e.Str("shell", cmdLine)
@@ -193,12 +198,14 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 	var stderr bytes.Buffer
 	cmd.Stderr = io.MultiWriter(&stderr)
 
-	var event = func(e *zerolog.Event) {
-		e.Str("stdout", stdout.String())
-		e.Str("stderr", stderr.String())
-	}
-	result.Must(cmd.Start(), event)
-	result.Must(cmd.Wait(), event)
+	err := Run(
+		func() error {
+			return cmd.Start()
+		},
+		func() error {
+			return cmd.Wait()
+		},
+	)
 
 	output := stdout.Bytes()
 	if stderr.Len() > 0 {
@@ -206,7 +213,7 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 		output = append(output, stderr.Bytes()...)
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	return strings.TrimSpace(string(output)), err.GetErr()
 }
 
 func IsRemoteTagExist(err string) bool {
@@ -224,12 +231,28 @@ func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
 	return do()
 }
 
-func PreGitPush(ctx context.Context) {
+// Your branch and 'origin/fix/version' have diverged,
+// and have 1 and 1 different commits each, respectively.
+//
+//	(use "git pull" if you want to integrate the remote branch with yours)
+//
+// nothing to commit, working tree clean
+
+func PreGitPush(ctx context.Context) (err error) {
+	defer result.RecoveryErr(&err)
+
+	isDirty := IsDirty().Must()
+	if isDirty {
+		return
+	}
+
 	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
+	fmt.Println(res)
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
-		needPush = match.Match(res, fmt.Sprintf("Your branch and '*%s' have diverged", GetBranchName())) &&
-			strings.Contains(result.Wrap(RunOutput(ctx, "git", "reflog", "-1")).Must(), "(amend)")
+		needPush =
+			match.Match(res, "*Your branch and '*' have diverged*") &&
+				strings.Contains(result.Wrap(RunOutput(ctx, "git", "reflog", "-1")).Must(), "(amend)")
 	}
 
 	if !needPush {
@@ -240,8 +263,14 @@ func PreGitPush(ctx context.Context) {
 		s.Prefix = "push git message: "
 	})
 	s.Start()
-	assert.Must(RunShell(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()))
+	res = assert.Must1(RunOutput(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()))
 	s.Stop()
+
+	if res == "" {
+		return
+	}
+	fmt.Println(res)
+	return errors.New(res)
 }
 
 var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
@@ -250,4 +279,29 @@ func LoadConfigAndBranch() {
 	branchName := GetBranchName()
 	log.Info().Msg("branch: " + branchName)
 	log.Info().Msg("config: " + configs.GetConfigPath())
+}
+
+func Run(executors ...func() error) result.Error {
+	for _, executor := range executors {
+		if err := executor(); err != nil {
+			return result.ErrOf(errors.WrapCaller(err, 1))
+		}
+	}
+	return result.Error{}
+}
+
+func getShell() string {
+	sh := "bash"
+	_, err := exec.LookPath(sh)
+	if err == nil {
+		return sh
+	}
+
+	sh = "sh"
+	_, err = exec.LookPath(sh)
+	if err == nil {
+		return sh
+	}
+
+	return ""
 }
