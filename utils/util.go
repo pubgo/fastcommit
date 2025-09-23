@@ -180,8 +180,13 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 		return err
 	})
 
-	var cmdLine = strings.Join(args, " ")
-	log.Info().Msgf("shell: %s", strings.TrimSpace(cmdLine))
+	sh := getShell()
+	if sh != "" {
+		args = []string{sh, "-c", fmt.Sprintf(`'%s'`, strings.Join(args, " "))}
+	}
+
+	cmdLine := strings.TrimSpace(strings.Join(args, " "))
+	log.Info().Msgf("shell: %s", cmdLine)
 
 	args = result.Wrap(shell.Fields(cmdLine, nil)).Must(func(e *zerolog.Event) {
 		e.Str("shell", cmdLine)
@@ -202,15 +207,12 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 		},
 	)
 
-	output := stdout.Bytes()
-	if stderr.Len() > 0 {
-		output = append(output, '\n')
-		output = append(output, stderr.Bytes()...)
+	if err.IsErr() {
+		return "", fmt.Errorf("%s\nerr: %w", stderr.String(), err.GetErr())
 	}
 
-	fmt.Println(string(output))
-
-	return strings.TrimSpace(string(output)), err.GetErr()
+	output := stdout.Bytes()
+	return strings.TrimSpace(string(output)), nil
 }
 
 func IsRemoteTagExist(err string) bool {
@@ -285,4 +287,20 @@ func Run(executors ...func() error) result.Error {
 		}
 	}
 	return result.Error{}
+}
+
+func getShell() string {
+	sh := "bash"
+	_, err := exec.LookPath(sh)
+	if err == nil {
+		return sh
+	}
+
+	sh = "sh"
+	_, err = exec.LookPath(sh)
+	if err == nil {
+		return sh
+	}
+
+	return ""
 }
