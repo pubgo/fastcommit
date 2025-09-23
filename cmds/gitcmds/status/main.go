@@ -1,0 +1,30 @@
+package main
+
+import (
+	"os"
+
+	"github.com/go-git/go-git/v6"
+	. "github.com/go-git/go-git/v6/_examples"
+	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/pretty"
+)
+
+// Basic example of how to commit changes to the current branch to an existing
+// repository.
+func main() {
+	directory := assert.Exit1(os.Getwd())
+
+	// Opens an already existing repository.
+	r, err := git.PlainOpen(directory)
+	CheckIfError(err)
+
+	w, err := r.Worktree()
+	CheckIfError(err)
+
+	// We can verify the current status of the worktree using the method Status.
+	Info("git status --porcelain")
+	status, err := w.Status()
+	CheckIfError(err)
+	pretty.Println(status)
+	pretty.Println(status.String())
+}
