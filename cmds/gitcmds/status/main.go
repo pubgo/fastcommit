@@ -23,7 +23,7 @@ func main() {
 
 	// We can verify the current status of the worktree using the method Status.
 	Info("git status --porcelain")
-	status, err := w.Status()
+	status, err := w.StatusWithOptions(git.StatusOptions{Strategy: git.Preload})
 	CheckIfError(err)
 	pretty.Println(status)
 	pretty.Println(status.String())
