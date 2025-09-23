@@ -246,7 +246,6 @@ func PreGitPush(ctx context.Context) (err error) {
 	}
 
 	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
-	fmt.Println(res)
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
 		needPush =
@@ -268,7 +267,6 @@ func PreGitPush(ctx context.Context) (err error) {
 	if res == "" {
 		return
 	}
-	fmt.Println(res)
 	return errors.New(res)
 }
 
@@ -303,4 +301,13 @@ func getShell() string {
 	}
 
 	return ""
+}
+
+func IsStatusNeedPush(msg string) bool {
+	var pattern = `
+*Your branch is ahead of '*' by * commits.
+  (use "git push" to publish your local commits)*
+`
+
+	return match.Match(msg, pattern)
 }
