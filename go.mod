@@ -28,9 +28,8 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pubgo/dix v0.3.23-alpha.4
-	github.com/pubgo/funk v0.5.69-alpha.35
+	github.com/pubgo/funk v0.5.69-alpha.38
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
@@ -85,7 +84,6 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect

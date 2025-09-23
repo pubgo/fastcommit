@@ -8,12 +8,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 )
 
-var path = "/Users/barry/Documents/git/zshrc.history"
+var path = "/Users/barry/Documents/git/zshrc.123.history"
 
 func New() *cli.Command {
 	return &cli.Command{
@@ -23,6 +25,7 @@ func New() *cli.Command {
 			{
 				Name: "rewrite",
 				Action: func(ctx context.Context, command *cli.Command) error {
+					assert.Exit(utils.RunShell(ctx, "cat", "~/.zsh_history", ">>", path))
 					var data = lo.Must(os.ReadFile(path))
 					var set = mapset.NewSet[string]()
 					for _, line := range strings.Split(string(data), "\n") {

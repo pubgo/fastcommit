@@ -18,16 +18,10 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-type Config struct {
-	GenVersion bool `yaml:"gen_version"`
-}
-
 type Params struct {
 	Di           *dix.Dix
 	Cmd          []*cli.Command
-	Cfg          *configs.Config
 	OpenaiClient *utils.OpenaiClient
-	CommitCfg    []*Config
 }
 
 func New(params Params) *Command {
@@ -40,6 +34,17 @@ func New(params Params) *Command {
 		Version:                version.Version(),
 		Commands:               params.Cmd,
 		EnableShellCompletion:  true,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "debug",
+				Usage:   "enable debug",
+				Value:   false,
+				Sources: cli.EnvVars(configs.DebugEnvKey),
+				Action: func(ctx context.Context, command *cli.Command, b bool) error {
+					return os.Setenv(configs.DebugEnvKey, "true")
+				},
+			},
+		},
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
 			if !term.IsTerminal(os.Stdin.Fd()) {
 				return ctx, fmt.Errorf("stdin is not terminal")

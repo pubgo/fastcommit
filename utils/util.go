@@ -8,12 +8,14 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/bitfield/script"
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/fastcommit/configs"
@@ -246,7 +248,6 @@ func PreGitPush(ctx context.Context) (err error) {
 	}
 
 	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
-	fmt.Println(res)
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
 		needPush =
@@ -268,7 +269,6 @@ func PreGitPush(ctx context.Context) (err error) {
 	if res == "" {
 		return
 	}
-	fmt.Println(res)
 	return errors.New(res)
 }
 
@@ -303,4 +303,34 @@ func getShell() string {
 	}
 
 	return ""
+}
+
+func IsStatusNeedPush(msg string) bool {
+	var pattern = `
+*Your branch is ahead of '*' by * commits.
+  (use "git push" to publish your local commits)*
+`
+
+	return match.Match(msg, pattern)
+}
+
+var editors = []string{"zed", "subl", "vim", "code", "open"}
+
+func GetEditor() (r result.Result[string]) {
+	for _, editor := range editors {
+		_, err := exec.LookPath(editor)
+		if err == nil {
+			return r.WithValue(editor)
+		}
+	}
+	return r.WithErr(errors.Errorf("no editor found in %q", editors))
+}
+
+func Edit(editPath string) {
+	log.Info().Msgf("edit path: %s", editPath)
+	editor := GetEditor().Must()
+	path := assert.Exit1(filepath.Abs(editPath))
+	shellData := fmt.Sprintf(`%s "%s"`, editor, path)
+	log.Info().Msg(shellData)
+	assert.Exit1(script.Exec(shellData).Stdout())
 }
