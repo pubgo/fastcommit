@@ -13,7 +13,6 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/x/term"
-	"github.com/pubgo/dix"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
@@ -23,7 +22,6 @@ import (
 	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
-	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
 )
 
@@ -32,8 +30,6 @@ type Config struct {
 }
 
 type Params struct {
-	Di           *dix.Dix
-	Cfg          *configs.Config
 	OpenaiClient *utils.OpenaiClient
 	CommitCfg    []*Config
 }
@@ -129,7 +125,8 @@ func New(params Params) *cli.Command {
 				}
 				assert.Must(pathutil.IsNotExistMkDir("version"))
 				assert.Exit(os.WriteFile("version/.version", []byte(tagName), 0644))
-				assert.Exit(os.WriteFile("version/version.go", []byte(`package version
+				assert.Exit(os.WriteFile("version/version.go", []byte(fmt.Sprintf(`
+package version
 
 import (
 	_ "embed"
@@ -139,7 +136,9 @@ import (
 var version string
 
 func Version() string { return version }
-`), 0644))
+
+func Date() string { return "%s" }
+`, time.Now().Format(time.DateOnly))), 0644))
 				break
 			}
 
