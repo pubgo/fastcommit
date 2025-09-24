@@ -8,7 +8,6 @@ import (
 
 	"github.com/bitfield/script"
 	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/log/logfields"
 	"github.com/pubgo/funk/v2/result"
@@ -24,16 +23,6 @@ func (e *KnownError) Error() string {
 	return e.Message
 }
 
-// AssertGitRepo 检查当前目录是否是 Git 仓库
-func AssertGitRepo(ctx context.Context) (string, error) {
-	output, err := RunOutput(ctx, "git", "rev-parse", "--show-toplevel")
-	if err != nil {
-		return "", &KnownError{Message: "The current directory must be a Git repository!"}
-	}
-
-	return strings.TrimSpace(output), nil
-}
-
 // ExcludeFromDiff 生成 Git 排除路径的格式
 func ExcludeFromDiff(path string) string {
 	return fmt.Sprintf(":(exclude)%s", path)
@@ -45,30 +34,25 @@ type GetStagedDiffRsp struct {
 }
 
 // GetStagedDiff 获取暂存区的差异
-func GetStagedDiff(ctx context.Context, excludeFiles ...string) (*GetStagedDiffRsp, error) {
+func GetStagedDiff(ctx context.Context, excludeFiles ...string) (r result.Result[*GetStagedDiffRsp]) {
+	defer result.Recovery(&r)
 	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	filesOutput, err := RunOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...)
-	if err != nil {
-		return nil, errors.WrapCaller(err)
-	}
+	filesOutput := RunOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...).Must()
 
 	files := strings.Split(strings.TrimSpace(filesOutput), "\n")
 	if len(files) == 0 || files[0] == "" {
-		return new(GetStagedDiffRsp), nil
+		return r.WithValue(new(GetStagedDiffRsp))
 	}
 
 	// 获取暂存区的完整差异
-	diffOutput, err := RunOutput(ctx, append(diffCached, excludeFiles...)...)
-	if err != nil {
-		return nil, errors.WrapCaller(err)
-	}
+	diffOutput := RunOutput(ctx, append(diffCached, excludeFiles...)...).Must()
 
-	return &GetStagedDiffRsp{
+	return r.WithValue(&GetStagedDiffRsp{
 		Files: files,
 		Diff:  strings.TrimSpace(diffOutput),
-	}, nil
+	})
 }
 
 // GetDetectedMessage 生成检测到的文件数量的消息
@@ -88,7 +72,7 @@ func GitPushTag(ctx context.Context, ver string) string {
 
 	log.Info().Msg("git push tag " + ver)
 	assert.Must(RunShell(ctx, "git", "tag", ver))
-	return assert.Must1(RunOutput(ctx, "git", "push", "origin", ver))
+	return RunOutput(ctx, "git", "push", "origin", ver).Must()
 }
 
 func GitFetchAll(ctx context.Context) {
