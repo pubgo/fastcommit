@@ -30,8 +30,7 @@ func Main() {
 	di.Provide(config.Load[configProvider])
 	di.Provide(utils.NewOpenaiClient)
 	di.Provide(historycmd.New)
-	di.Provide(fastcommit.New)
 	di.Provide(fastcommitcmd.New)
 	di.Provide(configcmd.New)
-	di.Inject(func(cmd *fastcommit.Command) { cmd.Run() })
+	di.Inject(fastcommit.Run)
 }

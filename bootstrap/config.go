@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/pubgo/funk/recovery"
 	"log/slog"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/pubgo/funk/env"
 	"github.com/pubgo/funk/log"
 	"github.com/pubgo/funk/pathutil"
+	"github.com/pubgo/funk/recovery"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"

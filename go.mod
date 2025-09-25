@@ -27,6 +27,7 @@ require (
 	github.com/google/go-github/v71 v71.0.0
 	github.com/hashicorp/go-getter v1.7.9
 	github.com/hashicorp/go-version v1.7.0
+	github.com/junegunn/fzf v0.65.2
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pubgo/dix v0.3.23-alpha.4
@@ -64,6 +65,7 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/charlievieth/fastwalk v1.0.12 // indirect
 	github.com/charmbracelet/colorprofile v0.3.1 // indirect
 	github.com/charmbracelet/x/ansi v0.9.3 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
@@ -79,6 +81,8 @@ require (
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/expr-lang/expr v1.17.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/gdamore/encoding v1.0.1 // indirect
+	github.com/gdamore/tcell/v2 v2.8.1 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
 	github.com/go-git/go-billy/v6 v6.0.0-20250627091229-31e2a16eef30 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
@@ -98,6 +102,7 @@ require (
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/junegunn/go-shellwords v0.0.0-20250127100254-2aa3b3277741 // indirect
 	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/kevinburke/ssh_config v1.4.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
