@@ -7,6 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	//fzf "github.com/junegunn/fzf/src"
+	_ "github.com/junegunn/fzf/src"
 )
 
 // isFzfAvailable checks if fzf is available in PATH
