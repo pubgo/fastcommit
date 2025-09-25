@@ -18,7 +18,6 @@ import (
 	"github.com/bitfield/script"
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
-	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/funk/assert"
 	"github.com/pubgo/funk/errors"
 	"github.com/pubgo/funk/log"
@@ -29,11 +28,13 @@ import (
 	"github.com/tidwall/match"
 	_ "github.com/tidwall/match"
 	"mvdan.cc/sh/v3/shell"
+
+	"github.com/pubgo/fastcommit/configs"
 )
 
 func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all remote tags")
-	output := assert.Exit1(RunOutput(ctx, "git", "ls-remote", "--tags", "origin"))
+	output := RunOutput(ctx, "git", "ls-remote", "--tags", "origin").Must()
 	return lo.Map(strings.Split(output, "\n"), func(item string, index int) *semver.Version {
 		item = strings.TrimSpace(item)
 		if !strings.HasPrefix(item, "refs/tags/") {
@@ -56,7 +57,7 @@ func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 
 func GetAllGitTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all tags")
-	var tagText = strings.TrimSpace(assert.Must1(RunOutput(ctx, "git", "tag")))
+	var tagText = strings.TrimSpace(RunOutput(ctx, "git", "tag").Must())
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -164,7 +165,7 @@ func IsHelp() bool {
 func RunShell(ctx context.Context, args ...string) (err error) {
 	defer result.RecoveryErr(&err)
 	now := time.Now()
-	res := result.Wrap(RunOutput(ctx, args...)).Must()
+	res := RunOutput(ctx, args...).Must()
 
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -173,8 +174,8 @@ func RunShell(ctx context.Context, args ...string) (err error) {
 	return nil
 }
 
-func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
-	defer result.RecoveryErr(&gErr, func(err error) error {
+func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
+	defer result.Recovery(&r, func(err error) error {
 		if exitErr, ok := errors.AsA[exec.ExitError](err); ok && exitErr.String() == "signal: interrupt" {
 			os.Exit(1)
 		}
@@ -210,11 +211,11 @@ func RunOutput(ctx context.Context, args ...string) (_ string, gErr error) {
 	)
 
 	if err.IsErr() {
-		return "", fmt.Errorf("%s\nerr: %w", stderr.String(), err.GetErr())
+		return r.WithErr(fmt.Errorf("%s\nerr: %w", stderr.String(), err.GetErr()))
 	}
 
 	output := stdout.Bytes()
-	return strings.TrimSpace(string(output)), nil
+	return r.WithValue(strings.TrimSpace(string(output)))
 }
 
 func IsRemoteTagExist(err string) bool {
@@ -247,12 +248,12 @@ func PreGitPush(ctx context.Context) (err error) {
 		return
 	}
 
-	res := result.Wrap(RunOutput(ctx, "git", "status")).Must()
+	res := RunOutput(ctx, "git", "status").Must()
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
 		needPush =
 			match.Match(res, "*Your branch and '*' have diverged*") &&
-				strings.Contains(result.Wrap(RunOutput(ctx, "git", "reflog", "-1")).Must(), "(amend)")
+				strings.Contains(RunOutput(ctx, "git", "reflog", "-1").Must(), "(amend)")
 	}
 
 	if !needPush {
@@ -263,7 +264,7 @@ func PreGitPush(ctx context.Context) (err error) {
 		s.Prefix = "push git message: "
 	})
 	s.Start()
-	res = assert.Must1(RunOutput(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()))
+	res = RunOutput(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()).Must()
 	s.Stop()
 
 	if res == "" {
@@ -275,9 +276,11 @@ func PreGitPush(ctx context.Context) (err error) {
 var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
 
 func LoadConfigAndBranch() {
-	branchName := GetBranchName()
-	log.Info().Msg("branch: " + branchName)
-	log.Info().Msg("config: " + configs.GetConfigPath())
+	log.Info().Msgf("branch: %s", GetBranchName())
+	log.Info().Msgf("config: %s", configs.GetConfigPath())
+	log.Info().Msgf("local: %s", configs.GetLocalEnvPath())
+	log.Info().Msgf("env: %s", configs.GetEnvPath())
+	log.Info().Msgf("repo: %s", configs.GetRepoPath())
 }
 
 func Run(executors ...func() error) result.Error {

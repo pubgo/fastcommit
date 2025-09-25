@@ -1,5 +1,5 @@
 version:
-  name: "v0.0.2"
+  name: "v0.0.3"
 openai:
   api_key: ${OPENAI_API_KEY}
   base_url: ${OPENAI_BASE_URL}

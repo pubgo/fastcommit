@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"
+	"github.com/pubgo/funk/recovery"
 	"log/slog"
 	"os"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/pubgo/funk/pathutil"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
 )
@@ -24,7 +25,7 @@ type configProvider struct {
 }
 
 func initConfig() {
-	env.Set("LC_ALL", "C").Must()
+	defer recovery.Exit()
 	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
 	log.SetEnableChecker(func(ctx context.Context, lvl log.Level, name, message string, fields log.Map) bool {
 		if configs.IsDebug() {
@@ -37,8 +38,8 @@ func initConfig() {
 		return true
 	})
 
-	env.LoadFiles(configs.GetLocalEnvPath())
-	configs.InitEnv()
+	env.MustSet("LC_ALL", "C")
+	env.LoadFiles(configs.GetLocalEnvPath()).Must()
 
 	configPath := configs.GetConfigPath()
 	envPath := configs.GetEnvPath()

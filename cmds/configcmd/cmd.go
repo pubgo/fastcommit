@@ -2,18 +2,23 @@ package configcmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/a8m/envsubst"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/env"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/pretty"
-	"github.com/pubgo/funk/recovery"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
+
+	"github.com/pubgo/funk/assert"
+	"github.com/pubgo/funk/config"
+	"github.com/pubgo/funk/env"
+	"github.com/pubgo/funk/log"
+	"github.com/pubgo/funk/pathutil"
+	"github.com/pubgo/funk/pretty"
+	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/strutil"
 )
 
 func New() *cli.Command {
@@ -49,6 +54,14 @@ func New() *cli.Command {
 					case "env":
 						utils.Edit(configs.GetEnvPath())
 					case "local":
+						if pathutil.IsNotExist(configs.GetLocalEnvPath()) {
+							file := assert.Exit1(os.Create(configs.GetLocalEnvPath()))
+							defer file.Close()
+							for name, cfg := range config.LoadEnvConfigMap(configs.GetConfigPath()) {
+								envData := strutil.FirstNotEmpty(cfg.Value, cfg.Default, "")
+								fmt.Fprintln(file, fmt.Sprintf(`%s=%q`, name, envData))
+							}
+						}
 						utils.Edit(configs.GetLocalEnvPath())
 					}
 
@@ -62,13 +75,13 @@ func New() *cli.Command {
 				Action: func(ctx context.Context, command *cli.Command) error {
 					defer recovery.Exit()
 
-					envMap := configs.GetEnvMap()
+					env.LoadFiles(configs.GetLocalEnvPath())
+					envMap := config.LoadEnvConfigMap(configs.GetConfigPath())
 					for name, cfg := range envMap {
 						envData := env.Get(name)
-						if envData == "" {
-							continue
+						if envData != "" {
+							cfg.Value = envData
 						}
-						cfg.Default = envData
 					}
 
 					pretty.Println(lo.Values(envMap))

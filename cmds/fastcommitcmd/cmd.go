@@ -142,13 +142,10 @@ func Date() string { return "%s" }
 				break
 			}
 
-			repoPath := assert.Must1(utils.AssertGitRepo(ctx))
-			log.Info().Msg("git repo: " + repoPath)
-
 			//username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
 
 			if flags.fastCommit {
-				preMsg := strings.TrimSpace(assert.Must1(utils.RunOutput(ctx, "git", "log", "-1", "--pretty=%B")))
+				preMsg := strings.TrimSpace(utils.RunOutput(ctx, "git", "log", "-1", "--pretty=%B").Must())
 				prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
 				msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
@@ -164,19 +161,23 @@ func Date() string { return "%s" }
 				}
 
 				assert.Must(utils.RunShell(ctx, "git", "add", "-A"))
-				res := assert.Must1(utils.RunOutput(ctx, "git", "status"))
+				res := utils.RunOutput(ctx, "git", "status").Must()
 				if strings.Contains(preMsg, prefixMsg) && !strings.Contains(res, `(use "git commit" to conclude merge)`) {
 					assert.Must(utils.RunShell(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
 				} else {
 					assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 				}
 
+				pushOutput := result.Async(func() result.Result[string] {
+					return utils.RunOutput(ctx, "git", "push", "--force-with-lease", "origin", utils.GetBranchName())
+				})
+				time.Sleep(time.Millisecond * 10)
+
 				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 					s.Prefix = "push git message: "
 				})
 				s.Start()
-				pushOutput := assert.Must1(utils.RunOutput(ctx, "git", "push", "--force-with-lease", "origin", utils.GetBranchName()))
-				if shouldPullDueToRemoteUpdate(pushOutput) {
+				if shouldPullDueToRemoteUpdate(pushOutput.Await(ctx).Must()) {
 					err := gitPull()
 					if err != nil {
 						if isMergeConflict() {
@@ -194,7 +195,7 @@ func Date() string { return "%s" }
 
 			assert.Must(utils.RunShell(ctx, "git", "add", "--update"))
 
-			diff := assert.Must1(utils.GetStagedDiff(ctx))
+			diff := utils.GetStagedDiff(ctx).Must()
 			if diff == nil || len(diff.Files) == 0 {
 				return nil
 			}
