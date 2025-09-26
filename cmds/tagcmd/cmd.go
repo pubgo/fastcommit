@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
-	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/urfave/cli/v3"
 
@@ -68,9 +69,12 @@ func New() *cli.Command {
 				return errors.Errorf("tag name is not valid: %s", tagName)
 			}
 
-			output := utils.Spin("push tag: ", func() (r result.Result[string]) {
-				return r.WithValue(utils.GitPushTag(ctx, tagName))
-			}).Log().Must()
+			pushTag := result.Async(func() result.Result[string] {
+				return result.OK(utils.GitPushTag(ctx, tagName))
+			})
+			time.Sleep(time.Millisecond * 100)
+
+			output := utils.Spin("push tag: ", func() (r result.Result[string]) { return pushTag.Await() }).Must()
 			if utils.IsRemoteTagExist(output) {
 				utils.Spin("fetch git tag: ", func() (r result.Result[any]) {
 					utils.GitFetchAll(ctx)

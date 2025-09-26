@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/recovery"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 )

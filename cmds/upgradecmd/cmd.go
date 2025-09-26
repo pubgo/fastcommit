@@ -2,8 +2,6 @@ package upgradecmd
 
 import (
 	"context"
-	"github.com/pubgo/funk/pretty"
-	"github.com/pubgo/funk/v2/result"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,9 +11,11 @@ import (
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
-	"github.com/pubgo/funk/log"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/pretty"
+	"github.com/pubgo/funk/v2/result"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"

@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/pubgo/fastcommit/utils/fzfutil"
-	"github.com/pubgo/funk"
-	"github.com/pubgo/funk/pretty"
+	"github.com/pubgo/funk/v2"
 )
 
 func main() {

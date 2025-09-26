@@ -906,10 +906,10 @@ github.com/prometheus/client_model v0.4.0/go.mod h1:oMQmHW1/JoDwqLtg57MGgP/Fb1CJ
 github.com/prometheus/client_model v0.5.0/go.mod h1:dTiFglRmd66nLR9Pv9f0mZi7B7fk5Pm3gvsjB5tr+kI=
 github.com/prometheus/client_model v0.6.0/go.mod h1:NTQHnmxFpouOD0DpvP4XujX3CdOAGQPoaGhyTchlyt8=
 github.com/prometheus/client_model v0.6.1/go.mod h1:OrxVMOVHjw3lKMa8+x6HeMGkHMQyHDk9E3jmP2AmGiY=
-github.com/pubgo/dix v0.3.23-alpha.4 h1:XuNq/VKa7Y+EzcAfxRfRooEWKWuDBUjjwZ4BlBm4qbg=
-github.com/pubgo/dix v0.3.23-alpha.4/go.mod h1:mSZIGE9yBrlXihcdXXLj+DbuYcnC4WxtNtNkHiQLf7c=
-github.com/pubgo/funk v0.5.69-alpha.44 h1:qcyii6qpSvgMAJiPua4Xkgt/pADbJmt/+oFke68pjWk=
-github.com/pubgo/funk v0.5.69-alpha.44/go.mod h1:3uUvveDViq7nEG/KSmoJFPYYjUWNQXZ7+Xu3pQNyOXc=
+github.com/pubgo/dix/v2 v2.0.0-alpha.1 h1:ntBiy/stJS6hcPa2ad4biFTIIu9tEgA+MG/4wGZpMp0=
+github.com/pubgo/dix/v2 v2.0.0-alpha.1/go.mod h1:SbbzhEkKl3pk6COyPTzgCDPXoammyHSB3HJs6SWrRY0=
+github.com/pubgo/funk/v2 v2.0.0-alpha.1 h1:wJQkEW74wmf5A0kYuenMlvVMTk1DAppJFD6Doh9BI6E=
+github.com/pubgo/funk/v2 v2.0.0-alpha.1/go.mod h1:5xv9L2ouP3/1Hd6X/wRs5pBraZ073a4J6DCjTVdLZ9s=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
@@ -1106,8 +1106,8 @@ go.opentelemetry.io/proto/otlp v0.7.0/go.mod h1:PqfVotwruBrMGOCsRd/89rSnXhoiJIqe
 go.opentelemetry.io/proto/otlp v0.15.0/go.mod h1:H7XAot3MsfNsj7EXtrA2q5xSNQ10UqI405h3+duxN4U=
 go.opentelemetry.io/proto/otlp v0.19.0/go.mod h1:H7XAot3MsfNsj7EXtrA2q5xSNQ10UqI405h3+duxN4U=
 go.opentelemetry.io/proto/otlp v1.0.0/go.mod h1:Sy6pihPLfYHkr3NkUbEhGHFhINUSI/v80hjKIs5JXpM=
-go.uber.org/atomic v1.11.0 h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
-go.uber.org/atomic v1.11.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
+go.uber.org/atomic v1.10.0 h1:9qC72Qh0+3MqyJbAn8YU5xVq1frD8bn3JtD2oXtafVQ=
+go.uber.org/atomic v1.10.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

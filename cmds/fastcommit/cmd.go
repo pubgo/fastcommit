@@ -7,24 +7,34 @@ import (
 	"sort"
 
 	"github.com/charmbracelet/x/term"
-	"github.com/pubgo/dix"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/fastcommit/version"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/recovery"
 	"github.com/urfave/cli/v3"
 )
 
-type Params struct {
-	Di           *dix.Dix
-	Cmd          []*cli.Command
-	OpenaiClient *utils.OpenaiClient
+type params struct {
+	Cmds []*cli.Command
 }
 
-func New(params Params) *Command {
+func Run(params params) {
+	defer recovery.Exit(func(err error) error {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
+		if err.Error() == "signal: interrupt" {
+			return nil
+		}
+
+		log.Err(err).Msg("failed to run command")
+		return nil
+	})
+
 	app := &cli.Command{
 		Name:                   "fastcommit",
 		Suggest:                true,
@@ -32,7 +42,7 @@ func New(params Params) *Command {
 		ShellComplete:          cli.DefaultAppComplete,
 		Usage:                  "Intelligent generation of git commit message",
 		Version:                version.Version(),
-		Commands:               params.Cmd,
+		Commands:               params.Cmds,
 		EnableShellCompletion:  true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -55,49 +65,8 @@ func New(params Params) *Command {
 			}
 			return ctx, nil
 		},
-		//Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-		//	defer result.RecoveryErr(&gErr, func(err error) error {
-		//		if errors.Is(err, context.Canceled) {
-		//			return nil
-		//		}
-		//
-		//		if err.Error() == "signal: interrupt" {
-		//			return nil
-		//		}
-		//
-		//		return err
-		//	})
-		//
-		//	if command.Args().Len() > 0 {
-		//		log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
-		//		cli.ShowRootCommandHelpAndExit(command, 1)
-		//		return nil
-		//	}
-		//
-		//	return command.Command("commit").Run(ctx, command.Args().Slice())
-		//},
 	}
 
 	sort.Sort(cli.FlagsByName(app.Flags))
-	return &Command{cmd: app}
-}
-
-type Command struct {
-	cmd *cli.Command
-}
-
-func (c *Command) Run() {
-	defer recovery.Exit(func(err error) error {
-		if errors.Is(err, context.Canceled) {
-			return nil
-		}
-
-		if err.Error() == "signal: interrupt" {
-			return nil
-		}
-
-		log.Err(err).Msg("failed to run command")
-		return nil
-	})
-	assert.Must(c.cmd.Run(utils.Context(), os.Args))
+	assert.Must(app.Run(utils.Context(), os.Args))
 }

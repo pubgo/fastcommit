@@ -5,8 +5,6 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	. "github.com/go-git/go-git/v6/_examples"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/pretty"
 )
 
 // Basic example of how to commit changes to the current branch to an existing

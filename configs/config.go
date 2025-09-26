@@ -8,8 +8,8 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/bitfield/script"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/env"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/env"
 )
 
 const DebugEnvKey = "ENABLE_DEBUG"
@@ -41,15 +41,8 @@ var GetLocalEnvPath = sync.OnceValue(func() string {
 	return path.Join(GetRepoPath(), ".git", "fastcommit.env")
 })
 
-func GetDefaultConfig() []byte {
-	return defaultConfig
-}
+func GetDefaultConfig() []byte { return defaultConfig }
 
-func GetEnvConfig() []byte {
-	return envConfig
-}
+func GetEnvConfig() []byte { return envConfig }
 
-func IsDebug() (debug bool) {
-	env.GetBoolVal(&debug, DebugEnvKey)
-	return
-}
+var IsDebug = sync.OnceValue(func() bool { return env.GetBool(DebugEnvKey) })

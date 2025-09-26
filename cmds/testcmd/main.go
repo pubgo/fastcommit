@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/pubgo/funk/log"
 	"strings"
 	"time"
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/funk/recovery"
-	"github.com/pubgo/funk/running"
-	"github.com/pubgo/funk/version"
+	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/funk/v2/running"
+	"github.com/pubgo/funk/v2/version"
 	"github.com/urfave/cli/v3"
 )
 

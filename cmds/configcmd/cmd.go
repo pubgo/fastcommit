@@ -8,17 +8,16 @@ import (
 	"github.com/a8m/envsubst"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/config"
+	"github.com/pubgo/funk/v2/env"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/pathutil"
+	"github.com/pubgo/funk/v2/pretty"
+	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/funk/v2/strutil"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
-
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/config"
-	"github.com/pubgo/funk/env"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/pathutil"
-	"github.com/pubgo/funk/pretty"
-	"github.com/pubgo/funk/recovery"
-	"github.com/pubgo/funk/strutil"
 )
 
 func New() *cli.Command {
