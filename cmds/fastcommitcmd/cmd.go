@@ -253,7 +253,7 @@ func Date() string { return "%s" }
 			pushOutput := result.AsyncErr(func() result.Error {
 				return result.ErrOf(utils.RunShell(ctx, "git", "push", "origin", utils.GetBranchName()))
 			})
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Millisecond * 100)
 
 			s = spinner.New(spinner.CharSets[35], 100*time.Millisecond,
 				func(s *spinner.Spinner) { s.Prefix = "push git message: " })
