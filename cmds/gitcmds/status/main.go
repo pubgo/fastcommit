@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/pubgo/funk/v2/assert"
 	"os"
 
 	"github.com/go-git/go-git/v6"
