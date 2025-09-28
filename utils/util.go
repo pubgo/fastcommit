@@ -275,7 +275,7 @@ func PreGitPush(ctx context.Context) (err error) {
 
 var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
 
-func LoadConfigAndBranch() {
+func LogConfigAndBranch() {
 	log.Info().Msgf("branch: %s", GetBranchName())
 	log.Info().Msgf("config: %s", configs.GetConfigPath())
 	log.Info().Msgf("local: %s", configs.GetLocalEnvPath())
