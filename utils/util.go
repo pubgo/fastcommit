@@ -1,10 +1,8 @@
 package utils
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -195,28 +193,13 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 		e.Str("shell", cmdLine)
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	var stdout bytes.Buffer
-	cmd.Stdout = io.MultiWriter(&stdout)
+	output, err := cmd.CombinedOutput()
 
-	var stderr bytes.Buffer
-	cmd.Stderr = io.MultiWriter(&stderr)
-
-	err := Run(
-		func() error {
-			return cmd.Start()
-		},
-		func() error {
-			return cmd.Wait()
-		},
-	)
-
-	if err.IsErr() {
-		fmt.Println(stdout.String())
-		fmt.Println(stderr.String())
-		return r.WithErr(fmt.Errorf("%s\nerr: %w", stderr.String(), err.GetErr()))
+	if err != nil {
+		fmt.Println(output)
+		return r.WithErr(err)
 	}
 
-	output := stdout.Bytes()
 	return r.WithValue(strings.TrimSpace(string(output)))
 }
 
