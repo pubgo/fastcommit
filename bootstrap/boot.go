@@ -3,9 +3,9 @@ package bootstrap
 import (
 	_ "github.com/adrg/xdg"
 	_ "github.com/charmbracelet/bubbletea"
-	"github.com/pubgo/dix"
-	"github.com/pubgo/funk/config"
-	"github.com/pubgo/funk/recovery"
+	"github.com/pubgo/dix/v2"
+	"github.com/pubgo/funk/v2/config"
+	"github.com/pubgo/funk/v2/recovery"
 	_ "github.com/sashabaranov/go-openai"
 
 	"github.com/pubgo/fastcommit/cmds/configcmd"
@@ -23,7 +23,7 @@ func Main() {
 
 	initConfig()
 
-	var di = dix.New(dix.WithValuesNull())
+	di := dix.New(dix.WithValuesNull())
 	di.Provide(versioncmd.New)
 	di.Provide(upgradecmd.New)
 	di.Provide(tagcmd.New)

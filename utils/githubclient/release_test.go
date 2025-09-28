@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pubgo/funk/pretty"
 	"github.com/samber/lo"
 )
 

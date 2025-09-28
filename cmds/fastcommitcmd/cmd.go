@@ -13,10 +13,10 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/x/term"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/pathutil"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
@@ -125,7 +125,7 @@ func New(params Params) *cli.Command {
 				}
 				assert.Must(pathutil.IsNotExistMkDir("version"))
 				assert.Exit(os.WriteFile("version/.version", []byte(tagName), 0644))
-				assert.Exit(os.WriteFile("version/version.go", []byte(fmt.Sprintf(`
+				assert.Exit(os.WriteFile("version/version.go", []byte(strings.TrimSpace(fmt.Sprintf(`
 package version
 
 import (
@@ -138,7 +138,7 @@ var version string
 func Version() string { return version }
 
 func Date() string { return "%s" }
-`, time.Now().Format(time.DateOnly))), 0644))
+`, time.Now().Format(time.DateOnly)))+"\n"), 0644))
 				break
 			}
 
@@ -173,9 +173,8 @@ func Date() string { return "%s" }
 				})
 				time.Sleep(time.Millisecond * 10)
 
-				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
-					s.Prefix = "push git message: "
-				})
+				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond,
+					func(s *spinner.Spinner) { s.Prefix = "push git message: " })
 				s.Start()
 				if shouldPullDueToRemoteUpdate(pushOutput.Await(ctx).Must()) {
 					err := gitPull()
@@ -250,7 +249,18 @@ func Date() string { return "%s" }
 			}
 
 			assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
-			assert.Must(utils.RunShell(ctx, "git", "push", "origin", utils.GetBranchName()))
+
+			pushOutput := result.AsyncErr(func() result.Error {
+				return result.ErrOf(utils.RunShell(ctx, "git", "push", "origin", utils.GetBranchName()))
+			})
+			time.Sleep(time.Millisecond * 10)
+
+			s = spinner.New(spinner.CharSets[35], 100*time.Millisecond,
+				func(s *spinner.Spinner) { s.Prefix = "push git message: " })
+			s.Start()
+			pushOutput.Await(ctx).Must()
+			s.Stop()
+
 			if flags.showPrompt {
 				fmt.Println("\n" + generatePrompt + "\n")
 			}

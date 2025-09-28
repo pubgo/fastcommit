@@ -30,8 +30,8 @@ require (
 	github.com/junegunn/fzf v0.65.2
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
-	github.com/pubgo/dix v0.3.23-alpha.4
-	github.com/pubgo/funk v0.5.69-alpha.45
+	github.com/pubgo/dix/v2 v2.0.0-alpha.1
+	github.com/pubgo/funk/v2 v2.0.0-alpha.1
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
@@ -144,7 +144,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	golang.org/x/net v0.43.0 // indirect

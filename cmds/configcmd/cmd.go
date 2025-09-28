@@ -6,41 +6,31 @@ import (
 	"os"
 
 	"github.com/a8m/envsubst"
+	"github.com/joho/godotenv"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/config"
+	"github.com/pubgo/funk/v2/env"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/pathutil"
+	"github.com/pubgo/funk/v2/pretty"
+	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/funk/v2/result"
+	"github.com/pubgo/funk/v2/strutil"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
-
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/config"
-	"github.com/pubgo/funk/env"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/pathutil"
-	"github.com/pubgo/funk/pretty"
-	"github.com/pubgo/funk/recovery"
-	"github.com/pubgo/funk/strutil"
 )
 
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "config",
 		Usage: "config management",
-		Action: func(ctx context.Context, command *cli.Command) error {
-			defer recovery.Exit()
-
-			cfgPath := configs.GetConfigPath()
-			log.Info().Msgf("config path: %s", cfgPath)
-
-			cfgData := assert.Must1(os.ReadFile(cfgPath))
-			cfgData = assert.Must1(envsubst.Bytes(cfgData))
-
-			log.Info().Msgf("config data: \n%s", cfgData)
-			return nil
-		},
 		Commands: []*cli.Command{
 			{
-				Name:  "edit",
-				Usage: "edit config env or local env file, args: [config|env|local]",
+				Name:      "edit",
+				Usage:     "edit config, env or local env file, args: [config|env|local], default:config",
+				UsageText: "fastcommit config edit [config|env|local]",
 				Action: func(ctx context.Context, command *cli.Command) error {
 					args := command.Args()
 					if args.Len() == 0 {
@@ -70,21 +60,44 @@ func New() *cli.Command {
 			},
 
 			{
-				Name:  "env",
-				Usage: "show all envs",
+				Name:      "show",
+				Usage:     "show config, env or local env file, args: [config|env|local], default:config",
+				UsageText: "fastcommit config show [config|env|local]",
 				Action: func(ctx context.Context, command *cli.Command) error {
 					defer recovery.Exit()
 
-					env.LoadFiles(configs.GetLocalEnvPath())
-					envMap := config.LoadEnvConfigMap(configs.GetConfigPath())
-					for name, cfg := range envMap {
-						envData := env.Get(name)
-						if envData != "" {
-							cfg.Value = envData
-						}
+					args := command.Args()
+					if args.Len() == 0 || args.First() == "config" {
+						cfgPath := configs.GetConfigPath()
+						log.Info().Msgf("config path: %s", cfgPath)
+
+						cfgData := assert.Must1(os.ReadFile(cfgPath))
+						cfgData = assert.Must1(envsubst.Bytes(cfgData))
+
+						log.Info().Msgf("config data: \n%s", cfgData)
+						return nil
 					}
 
-					pretty.Println(lo.Values(envMap))
+					switch args.First() {
+					case "env":
+						log.Info().Msgf("env path: %s", configs.GetEnvPath())
+						env.LoadFiles(configs.GetLocalEnvPath())
+						envMap := config.LoadEnvConfigMap(configs.GetConfigPath())
+						for name, cfg := range envMap {
+							envData := env.Get(name)
+							if envData != "" {
+								cfg.Value = envData
+							}
+						}
+
+						pretty.Println(lo.Values(envMap))
+					case "local":
+						log.Info().Msgf("local env path: %s", configs.GetLocalEnvPath())
+						data := result.Wrap(os.ReadFile(configs.GetLocalEnvPath())).Must()
+						dataMap := result.Wrap(godotenv.UnmarshalBytes(data)).Must()
+						pretty.Println(dataMap)
+					}
+
 					return nil
 				},
 			},

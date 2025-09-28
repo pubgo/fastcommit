@@ -18,11 +18,11 @@ import (
 	"github.com/bitfield/script"
 	"github.com/briandowns/spinner"
 	semver "github.com/hashicorp/go-version"
-	"github.com/pubgo/funk/assert"
-	"github.com/pubgo/funk/errors"
-	"github.com/pubgo/funk/log"
-	"github.com/pubgo/funk/typex"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/pubgo/funk/v2/typex"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/tidwall/match"
@@ -211,6 +211,8 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	)
 
 	if err.IsErr() {
+		fmt.Println(stdout.String())
+		fmt.Println(stderr.String())
 		return r.WithErr(fmt.Errorf("%s\nerr: %w", stderr.String(), err.GetErr()))
 	}
 
