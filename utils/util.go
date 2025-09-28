@@ -160,6 +160,18 @@ func IsHelp() bool {
 	return false
 }
 
+func GitPush(ctx context.Context, args ...string) {
+	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
+	spin.Start()
+	now := time.Now()
+	args = append([]string{"git", "push"}, args...)
+	res := RunOutput(ctx, args...).Must()
+	spin.Stop()
+	if res != "" {
+		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
+	}
+}
+
 func RunShell(ctx context.Context, args ...string) (err error) {
 	defer result.RecoveryErr(&err)
 	now := time.Now()

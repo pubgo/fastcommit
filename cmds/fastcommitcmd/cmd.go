@@ -168,27 +168,19 @@ func Date() string { return "%s" }
 					assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 				}
 
-				pushOutput := result.Async(func() result.Result[string] {
-					return utils.RunOutput(ctx, "git", "push", "--force-with-lease", "origin", utils.GetBranchName())
-				})
-				time.Sleep(time.Millisecond * 10)
-
-				s := spinner.New(spinner.CharSets[35], 100*time.Millisecond,
-					func(s *spinner.Spinner) { s.Prefix = "push git message: " })
-				s.Start()
-				if shouldPullDueToRemoteUpdate(pushOutput.Await(ctx).Must()) {
-					err := gitPull()
-					if err != nil {
-						if isMergeConflict() {
-							handleMergeConflict()
-						} else {
-							os.Exit(1)
-						}
-					} else {
-						informUserToAmendAndPush()
-					}
-				}
-				s.Stop()
+				utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+				//if shouldPullDueToRemoteUpdate(pushOutput.Await(ctx).Must()) {
+				//	err := gitPull()
+				//	if err != nil {
+				//		if isMergeConflict() {
+				//			handleMergeConflict()
+				//		} else {
+				//			os.Exit(1)
+				//		}
+				//	} else {
+				//		informUserToAmendAndPush()
+				//	}
+				//}
 				return
 			}
 
@@ -249,18 +241,7 @@ func Date() string { return "%s" }
 			}
 
 			assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
-
-			pushOutput := result.AsyncErr(func() result.Error {
-				return result.ErrOf(utils.RunShell(ctx, "git", "push", "origin", utils.GetBranchName()))
-			})
-			time.Sleep(time.Millisecond * 100)
-
-			s = spinner.New(spinner.CharSets[35], 100*time.Millisecond,
-				func(s *spinner.Spinner) { s.Prefix = "push git message: " })
-			s.Start()
-			pushOutput.Await(ctx).Must()
-			s.Stop()
-
+			utils.GitPush(ctx, "origin", utils.GetBranchName())
 			if flags.showPrompt {
 				fmt.Println("\n" + generatePrompt + "\n")
 			}
