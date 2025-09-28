@@ -161,11 +161,14 @@ func IsHelp() bool {
 }
 
 func GitPush(ctx context.Context, args ...string) {
-	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
-	spin.Start()
 	now := time.Now()
 	args = append([]string{"git", "push"}, args...)
-	res := RunOutput(ctx, args...).Must()
+	output := result.Async(func() result.Result[string] { return RunOutput(ctx, args...) })
+	time.Sleep(time.Millisecond * 20)
+
+	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
+	spin.Start()
+	res := output.Await(ctx).Must()
 	spin.Stop()
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
