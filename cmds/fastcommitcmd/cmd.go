@@ -13,6 +13,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/x/term"
+	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
@@ -29,12 +30,12 @@ type Config struct {
 	GenVersion bool `yaml:"gen_version"`
 }
 
-type Params struct {
+type cmdParams struct {
 	OpenaiClient *utils.OpenaiClient
 	CommitCfg    []*Config
 }
 
-func New(params Params) *cli.Command {
+func New() *cli.Command {
 	var flags = new(struct {
 		showPrompt bool
 		fastCommit bool
@@ -71,6 +72,10 @@ func New(params Params) *cli.Command {
 			return ctx, nil
 		},
 		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+			di := utils.GetDixCtx(ctx)
+			var params cmdParams
+			params = dix.Inject(di, params)
+
 			defer result.RecoveryErr(&gErr, func(err error) error {
 				if errors.Is(err, context.Canceled) {
 					return nil
@@ -89,7 +94,7 @@ func New(params Params) *cli.Command {
 				return nil
 			}
 
-			utils.LoadConfigAndBranch()
+			utils.LogConfigAndBranch()
 
 			err := utils.PreGitPush(ctx)
 			if err != nil {

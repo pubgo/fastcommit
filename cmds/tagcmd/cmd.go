@@ -41,7 +41,7 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
-			utils.LoadConfigAndBranch()
+			utils.LogConfigAndBranch()
 
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)

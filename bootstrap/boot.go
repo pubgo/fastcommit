@@ -1,36 +1,94 @@
 package bootstrap
 
 import (
+	"context"
+	"fmt"
+	"os"
+
 	_ "github.com/adrg/xdg"
 	_ "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
+	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/config"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/recovery"
 	_ "github.com/sashabaranov/go-openai"
+	"github.com/urfave/cli/v3"
 
 	"github.com/pubgo/fastcommit/cmds/configcmd"
-	"github.com/pubgo/fastcommit/cmds/fastcommit"
 	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"
 	"github.com/pubgo/fastcommit/cmds/historycmd"
 	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/upgradecmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
+	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/fastcommit/version"
 )
 
 func Main() {
-	defer recovery.Exit()
+	run(
+		versioncmd.New(),
+		upgradecmd.New(),
+		tagcmd.New(),
+		historycmd.New(),
+		fastcommitcmd.New(),
+		configcmd.New(),
+	)
+}
 
-	initConfig()
+func run(cmds ...*cli.Command) {
+	defer recovery.Exit(func(err error) error {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
 
-	di := dix.New(dix.WithValuesNull())
-	di.Provide(versioncmd.New)
-	di.Provide(upgradecmd.New)
-	di.Provide(tagcmd.New)
-	di.Provide(config.Load[configProvider])
-	di.Provide(utils.NewOpenaiClient)
-	di.Provide(historycmd.New)
-	di.Provide(fastcommitcmd.New)
-	di.Provide(configcmd.New)
-	di.Inject(fastcommit.Run)
+		if err.Error() == "signal: interrupt" {
+			return nil
+		}
+
+		log.Err(err).Msg("failed to run command")
+		return nil
+	})
+
+	app := &cli.Command{
+		Name:                   "fastcommit",
+		Suggest:                true,
+		UseShortOptionHandling: true,
+		ShellComplete:          cli.DefaultAppComplete,
+		Usage:                  "Intelligent generation of git commit message",
+		Version:                version.Version(),
+		Commands:               cmds,
+		EnableShellCompletion:  true,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "debug",
+				Usage:   "enable debug",
+				Value:   false,
+				Sources: cli.EnvVars(configs.DebugEnvKey),
+				Action: func(ctx context.Context, command *cli.Command, b bool) error {
+					return os.Setenv(configs.DebugEnvKey, "true")
+				},
+			},
+		},
+		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
+			if !term.IsTerminal(os.Stdin.Fd()) {
+				return ctx, fmt.Errorf("stdin is not terminal")
+			}
+
+			if utils.IsHelp() {
+				return ctx, cli.ShowAppHelp(command)
+			}
+
+			initConfig()
+			di := dix.New(dix.WithValuesNull())
+			di.Provide(config.Load[configProvider])
+			di.Provide(utils.NewOpenaiClient)
+			return utils.CreateDixCtx(ctx, di), nil
+		},
+	}
+
+	assert.Must(app.Run(utils.Context(), os.Args))
 }
