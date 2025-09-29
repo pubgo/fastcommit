@@ -14,6 +14,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
+	"github.com/pubgo/dix/v2/dixcontext"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
@@ -72,7 +73,7 @@ func New() *cli.Command {
 			return ctx, nil
 		},
 		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
-			di := utils.GetDixCtx(ctx)
+			di := dixcontext.Get(ctx)
 			var params cmdParams
 			params = dix.Inject(di, params)
 
@@ -140,9 +141,9 @@ import (
 //go:embed .version
 var version string
 
-func Version() string { return version }
+func ReleaseVersion() string { return version }
 
-func Date() string { return "%s" }
+func ReleaseDate() string { return "%s" }
 `, time.Now().Format(time.DateOnly)))+"\n"), 0644))
 				break
 			}

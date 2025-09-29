@@ -32,7 +32,7 @@ require (
 	github.com/junegunn/fzf v0.65.2
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
-	github.com/pubgo/dix/v2 v2.0.0-alpha.1
+	github.com/pubgo/dix/v2 v2.0.0-alpha.2
 	github.com/pubgo/funk/v2 v2.0.0-alpha.1
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0

@@ -7,6 +7,6 @@ import (
 //go:embed .version
 var version string
 
-func Version() string { return version }
+func ReleaseVersion() string { return version }
 
-func Date() string { return "2025-09-29" }
+func ReleaseDate() string { return "2025-09-29" }

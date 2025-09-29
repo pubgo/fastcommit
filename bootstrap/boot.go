@@ -9,6 +9,7 @@ import (
 	_ "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
+	"github.com/pubgo/dix/v2/dixcontext"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/config"
 	"github.com/pubgo/funk/v2/errors"
@@ -59,7 +60,7 @@ func run(cmds ...*cli.Command) {
 		UseShortOptionHandling: true,
 		ShellComplete:          cli.DefaultAppComplete,
 		Usage:                  "Intelligent generation of git commit message",
-		Version:                version.Version(),
+		Version:                version.ReleaseVersion(),
 		Commands:               cmds,
 		EnableShellCompletion:  true,
 		Flags: []cli.Flag{
@@ -86,7 +87,7 @@ func run(cmds ...*cli.Command) {
 			di := dix.New(dix.WithValuesNull())
 			di.Provide(config.Load[configProvider])
 			di.Provide(utils.NewOpenaiClient)
-			return utils.CreateDixCtx(ctx, di), nil
+			return dixcontext.Create(ctx, di), nil
 		},
 	}
 
