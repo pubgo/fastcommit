@@ -21,7 +21,7 @@ func New() *cli.Command {
 			defer recovery.Exit()
 			fmt.Println("project:", version.Project())
 			fmt.Println("version:", version.Version())
-			fmt.Println("release:", v1.Version())
+			fmt.Println("release:", v1.ReleaseVersion())
 			fmt.Println("commit-id:", version.CommitID())
 			fmt.Println("build-time:", version.BuildTime())
 			fmt.Println("device-id:", running.DeviceID)

@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"context"
 	"log/slog"
 	"os"
 
@@ -25,16 +24,16 @@ type configProvider struct {
 
 func initConfig() {
 	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
-	log.SetEnableChecker(func(ctx context.Context, lvl log.Level, name, message string, fields log.Map) bool {
-		if configs.IsDebug() {
-			return true
-		}
-
-		if name == "dix" || name == "env" || fields["module"] == "env" {
-			return false
-		}
-		return true
-	})
+	//log.SetEnableChecker(func(ctx context.Context, lvl log.Level, name, message string, fields log.Map) bool {
+	//	if configs.IsDebug() {
+	//		return true
+	//	}
+	//
+	//	if name == "dix" || name == "env" || fields["module"] == "env" {
+	//		return false
+	//	}
+	//	return true
+	//})
 
 	env.MustSet("LC_ALL", "C")
 	env.LoadFiles(configs.GetLocalEnvPath()).Must()
