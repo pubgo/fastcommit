@@ -28,19 +28,23 @@ require (
 	github.com/google/go-github/v71 v71.0.0
 	github.com/hashicorp/go-getter v1.7.9
 	github.com/hashicorp/go-version v1.7.0
+	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/junegunn/fzf v0.65.2
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/olekukonko/tablewriter v1.0.8
+	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/pubgo/dix/v2 v2.0.0-alpha.2
-	github.com/pubgo/funk/v2 v2.0.0-alpha.1
+	github.com/pubgo/funk/v2 v2.0.0-alpha.4
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/match v1.1.1
 	github.com/urfave/cli/v3 v3.4.1
 	github.com/yarlson/tap v0.9.0
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	google.golang.org/genai v1.24.0
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.12.0
@@ -127,6 +131,7 @@ require (
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/olekukonko/errors v1.1.0 // indirect
 	github.com/olekukonko/ll v0.0.9 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.9 // indirect
 	github.com/pion/transport/v2 v2.0.0 // indirect
 	github.com/pion/udp v0.1.4 // indirect
 	github.com/pjbgf/sha1cd v0.5.0 // indirect
@@ -138,7 +143,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -164,11 +168,11 @@ require (
 	golang.org/x/term v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.241.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

@@ -9,4 +9,4 @@ var version string
 
 func ReleaseVersion() string { return version }
 
-func ReleaseDate() string { return "2025-09-29" }
+func ReleaseDate() string { return "2025-10-08" }
