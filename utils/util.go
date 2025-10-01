@@ -209,9 +209,8 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
-		fmt.Println(output)
+		fmt.Println(string(output))
 		return r.WithErr(err)
 	}
 

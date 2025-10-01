@@ -7,6 +7,7 @@ import (
 
 	"github.com/coder/serpent"
 	"github.com/coder/serpent/completion"
+	"github.com/spf13/pflag"
 )
 
 // installCommand returns a serpent command that helps
@@ -130,9 +131,12 @@ func main() {
 	}
 
 	inv := cmd.Invoke().WithOS()
-
 	err := inv.Run()
 	if err != nil {
 		panic(err)
 	}
+}
+
+func OnSet(val pflag.Value, onset func(string) error) pflag.Value {
+	return val
 }
