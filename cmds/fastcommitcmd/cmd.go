@@ -18,7 +18,6 @@ import (
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
-	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
@@ -129,22 +128,7 @@ func New() *cli.Command {
 					ver := utils.GetNextReleaseTag(allTags)
 					tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
 				}
-				assert.Must(pathutil.IsNotExistMkDir("version"))
-				assert.Exit(os.WriteFile("version/.version", []byte(tagName), 0644))
-				assert.Exit(os.WriteFile("version/version.go", []byte(strings.TrimSpace(fmt.Sprintf(`
-package version
-
-import (
-	_ "embed"
-)
-
-//go:embed .version
-var version string
-
-func ReleaseVersion() string { return version }
-
-func ReleaseDate() string { return "%s" }
-`, time.Now().Format(time.DateOnly)))+"\n"), 0644))
+				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
 				break
 			}
 
