@@ -22,7 +22,12 @@ tasks:
     desc: "default task"
     cmds:
       - task -a
-
+  gomod:
+    cmds:
+      - go mod tidy
+  install:
+    cmds:
+      - go install .
   info:
     cmds:
       - echo "Project {{.Project}}"

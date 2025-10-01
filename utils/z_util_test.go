@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pubgo/funk/v2/result"
-
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/match"
@@ -26,5 +24,5 @@ func TestMatch(t *testing.T) {
 	var txt = `123  Your branch and 'origin/feat/genai' have diverged 123`
 	t.Log(match.Match(txt, fmt.Sprintf("*Your branch and '*feat/genai' have diverged*")))
 
-	t.Log(strings.Contains(result.Wrap(utils.RunOutput(context.Background(), "git", "reflog", "-1")).Must(), "(amend)"))
+	t.Log(strings.Contains(utils.RunOutput(context.Background(), "git", "reflog", "-1").Must(), "(amend)"))
 }

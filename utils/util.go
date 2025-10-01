@@ -160,7 +160,7 @@ func IsHelp() bool {
 	return false
 }
 
-func GitPush(ctx context.Context, args ...string) {
+func GitPush(ctx context.Context, args ...string) string {
 	now := time.Now()
 	args = append([]string{"git", "push"}, args...)
 	output := result.Async(func() result.Result[string] { return RunOutput(ctx, args...) })
@@ -173,6 +173,7 @@ func GitPush(ctx context.Context, args ...string) {
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
 	}
+	return res
 }
 
 func RunShell(ctx context.Context, args ...string) (err error) {
@@ -209,9 +210,8 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
-		fmt.Println(output)
+		fmt.Println(string(output))
 		return r.WithErr(err)
 	}
 
@@ -260,17 +260,7 @@ func PreGitPush(ctx context.Context) (err error) {
 		return
 	}
 
-	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
-		s.Prefix = "push git message: "
-	})
-	s.Start()
-	res = RunOutput(ctx, "git", "push", "--force-with-lease", "origin", GetBranchName()).Must()
-	s.Stop()
-
-	if res == "" {
-		return
-	}
-	return errors.New(res)
+	return errors.New(GitPush(ctx, "--force-with-lease", "origin", GetBranchName()))
 }
 
 var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
