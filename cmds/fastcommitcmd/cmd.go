@@ -129,6 +129,7 @@ func New() *cli.Command {
 					ver := utils.GetNextReleaseTag(allTags)
 					tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
 				}
+				nn := time.Now()
 				assert.Must(pathutil.IsNotExistMkDir("version"))
 				assert.Exit(os.WriteFile("version/.version", []byte(tagName), 0644))
 				assert.Exit(os.WriteFile("version/version.go", []byte(strings.TrimSpace(fmt.Sprintf(`
@@ -141,10 +142,12 @@ import (
 //go:embed .version
 var version string
 
+// ReleaseVersion %s
 func ReleaseVersion() string { return version }
 
-func ReleaseDate() string { return "%s" }
-`, time.Now().Format(time.DateOnly)))+"\n"), 0644))
+// ReleaseDate %s
+func ReleaseDate() int64 { return %d }
+`, tagName, nn.UTC().Format(time.RFC3339), nn.Unix()))+"\n"), 0644))
 				break
 			}
 
