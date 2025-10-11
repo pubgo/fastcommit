@@ -11,6 +11,7 @@ import (
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
 	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/buildinfo/version"
 	"github.com/pubgo/funk/v2/config"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
@@ -26,7 +27,6 @@ import (
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
 	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/fastcommit/version"
 )
 
 func Main() {

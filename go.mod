@@ -35,7 +35,7 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/pubgo/dix/v2 v2.0.0-alpha.3
-	github.com/pubgo/funk/v2 v2.0.0-alpha.4
+	github.com/pubgo/funk/v2 v2.0.0-alpha.5
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/sashabaranov/go-openai v1.40.5
@@ -161,6 +161,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
+	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
