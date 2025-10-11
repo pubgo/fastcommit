@@ -11,10 +11,14 @@ import (
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
 	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/buildinfo/version"
 	"github.com/pubgo/funk/v2/config"
 	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/features/featureflags"
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/funk/v2/running"
+	"github.com/samber/lo"
 	_ "github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
 
@@ -24,9 +28,7 @@ import (
 	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/upgradecmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
-	"github.com/pubgo/fastcommit/configs"
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/fastcommit/version"
 )
 
 func Main() {
@@ -63,17 +65,7 @@ func run(cmds ...*cli.Command) {
 		Version:                version.ReleaseVersion(),
 		Commands:               cmds,
 		EnableShellCompletion:  true,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "debug",
-				Usage:   "enable debug",
-				Value:   false,
-				Sources: cli.EnvVars(configs.DebugEnvKey),
-				Action: func(ctx context.Context, command *cli.Command, b bool) error {
-					return os.Setenv(configs.DebugEnvKey, "true")
-				},
-			},
-		},
+		Flags:                  append(featureflags.GetFlags(), lo.ToPtr(running.DebugFlag)),
 		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
 			if !term.IsTerminal(os.Stdin.Fd()) {
 				return ctx, fmt.Errorf("stdin is not terminal")

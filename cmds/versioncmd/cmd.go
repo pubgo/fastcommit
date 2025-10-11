@@ -3,9 +3,10 @@ package versioncmd
 import (
 	"context"
 	"fmt"
+
 	"github.com/pubgo/fastcommit/utils"
-	"github.com/pubgo/fastcommit/version"
 	"github.com/pubgo/funk/v2/buildinfo"
+	"github.com/pubgo/funk/v2/buildinfo/version"
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/running"
 	"github.com/urfave/cli/v3"

@@ -9,10 +9,7 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/bitfield/script"
 	"github.com/pubgo/funk/v2/assert"
-	"github.com/pubgo/funk/v2/env"
 )
-
-const DebugEnvKey = "ENABLE_DEBUG"
 
 type Version struct {
 	Name string `yaml:"name"`
@@ -44,5 +41,3 @@ var GetLocalEnvPath = sync.OnceValue(func() string {
 func GetDefaultConfig() []byte { return defaultConfig }
 
 func GetEnvConfig() []byte { return envConfig }
-
-var IsDebug = sync.OnceValue(func() bool { return env.GetBool(DebugEnvKey) })
