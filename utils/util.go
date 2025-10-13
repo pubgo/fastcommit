@@ -211,7 +211,7 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
+		log.Err(err, ctx).Msg("git error\n" + string(output))
 		return r.WithErr(err)
 	}
 
@@ -226,7 +226,8 @@ func IsRemotePushCommitFailed(err string) bool {
 	return strings.Contains(err, "[rejected]") && strings.Contains(err, "failed to push some refs to")
 }
 
-func Spin[T any](name string, do func() result.Result[T]) result.Result[T] {
+func Spin[T any](name string, do func() result.Result[T]) (r result.Result[T]) {
+	defer result.Recovery(&r)
 	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = name })
 	s.Start()
 	defer s.Stop()
