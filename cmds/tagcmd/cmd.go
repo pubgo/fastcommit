@@ -27,6 +27,11 @@ func New() *cli.Command {
 				Name:  "list",
 				Usage: "list all tags",
 				Action: func(ctx context.Context, command *cli.Command) error {
+					utils.Spin("fetch git tag: ", func() (r result.Result[any]) {
+						utils.GitFetchAll(ctx)
+						return
+					})
+
 					var tagText = strings.TrimSpace(utils.RunOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
 					tag, err := fzfutil.SelectWithFzf(ctx, strings.NewReader(tagText))
 					if err != nil {

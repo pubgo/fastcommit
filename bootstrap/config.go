@@ -10,6 +10,7 @@ import (
 	"github.com/pubgo/funk/v2/env"
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/pathutil"
+	"github.com/pubgo/funk/v2/running"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"
@@ -26,7 +27,7 @@ type configProvider struct {
 func initConfig() {
 	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
 	log.SetEnableChecker(func(ctx context.Context, lvl log.Level, name, message string, fields log.Map) bool {
-		if configs.IsDebug() {
+		if running.Debug() {
 			return true
 		}
 
