@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/peterbourgon/ff/v4"
-	"github.com/peterbourgon/ff/v4/ffhelp"
 )
 
 // textctl is a simple application where all commands are built up in func main.
@@ -64,9 +63,10 @@ func main() {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, countCmd) // add the count command underneath the root command
 
+	ff.Command{}
 	if err := rootCmd.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", ffhelp.Command(rootCmd))
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(0)
+		//fmt.Fprintf(os.Stderr, "%s\n", ffhelp.Command(rootCmd))
+		//fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		//os.Exit(0)
 	}
 }
