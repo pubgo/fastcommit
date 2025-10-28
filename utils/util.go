@@ -211,7 +211,7 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
-	if !IsOsExit(err) {
+	if err != nil && !IsOsExit(err) {
 		log.Err(err, ctx).Msg("git error\n" + string(output))
 		return r.WithErr(err)
 	}
