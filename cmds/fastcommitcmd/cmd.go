@@ -132,10 +132,10 @@ func New() *cli.Command {
 				break
 			}
 
-			//username := strings.TrimSpace(assert.Must1(utils.RunOutput("git", "config", "get", "user.name")))
+			//username := strings.TrimSpace(assert.Must1(utils.ShellExecOutput("git", "config", "get", "user.name")))
 
 			if flags.fastCommit {
-				preMsg := strings.TrimSpace(utils.RunOutput(ctx, "git", "log", "-1", "--pretty=%B").Must())
+				preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Must())
 				prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
 				msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
@@ -150,12 +150,12 @@ func New() *cli.Command {
 					return
 				}
 
-				assert.Must(utils.RunShell(ctx, "git", "add", "-A"))
-				res := utils.RunOutput(ctx, "git", "status").Must()
+				assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
+				res := utils.ShellExecOutput(ctx, "git", "status").Must()
 				if strings.Contains(preMsg, prefixMsg) && !strings.Contains(res, `(use "git commit" to conclude merge)`) {
-					assert.Must(utils.RunShell(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
+					assert.Must(utils.ShellExec(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
 				} else {
-					assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
+					assert.Must(utils.ShellExec(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 				}
 
 				res = utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
@@ -174,7 +174,7 @@ func New() *cli.Command {
 				return
 			}
 
-			assert.Must(utils.RunShell(ctx, "git", "add", "--update"))
+			assert.Must(utils.ShellExec(ctx, "git", "add", "--update"))
 
 			diff := utils.GetStagedDiff(ctx).Must()
 			if diff == nil || len(diff.Files) == 0 {
@@ -230,7 +230,7 @@ func New() *cli.Command {
 				return
 			}
 
-			assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
+			assert.Must(utils.ShellExec(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 			utils.GitPush(ctx, "origin", utils.GetBranchName())
 			if flags.showPrompt {
 				fmt.Println("\n" + generatePrompt + "\n")

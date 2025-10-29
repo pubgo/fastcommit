@@ -33,7 +33,7 @@ import (
 
 func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all remote tags")
-	output := RunOutput(ctx, "git", "ls-remote", "--tags", "origin").Must()
+	output := ShellExecOutput(ctx, "git", "ls-remote", "--tags", "origin").Must()
 	return lo.Map(strings.Split(output, "\n"), func(item string, index int) *semver.Version {
 		item = strings.TrimSpace(item)
 		if !strings.HasPrefix(item, "refs/tags/") {
@@ -56,7 +56,7 @@ func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 
 func GetAllGitTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all tags")
-	var tagText = strings.TrimSpace(RunOutput(ctx, "git", "tag").Must())
+	var tagText = strings.TrimSpace(ShellExecOutput(ctx, "git", "tag").Must())
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -84,6 +84,10 @@ func GetCurMaxVer(ctx context.Context) *semver.Version {
 }
 
 func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
@@ -97,6 +101,10 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 }
 
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var maxVer = GetNextGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), pre) })
@@ -164,7 +172,7 @@ func IsHelp() bool {
 func GitPush(ctx context.Context, args ...string) string {
 	now := time.Now()
 	args = append([]string{"git", "push"}, args...)
-	output := result.Async(func() result.Result[string] { return RunOutput(ctx, args...) })
+	output := result.Async(func() result.Result[string] { return ShellExecOutput(ctx, args...) })
 	time.Sleep(time.Millisecond * 20)
 
 	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
@@ -177,10 +185,10 @@ func GitPush(ctx context.Context, args ...string) string {
 	return res
 }
 
-func RunShell(ctx context.Context, args ...string) (err error) {
+func ShellExec(ctx context.Context, args ...string) (err error) {
 	defer result.RecoveryErr(&err)
 	now := time.Now()
-	res := RunOutput(ctx, args...).Must()
+	res := ShellExecOutput(ctx, args...).Must()
 
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -189,7 +197,7 @@ func RunShell(ctx context.Context, args ...string) (err error) {
 	return nil
 }
 
-func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
+func ShellExecOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	defer result.Recovery(&r, func(err error) error {
 		if exitErr, ok := errors.AsA[exec.ExitError](err); ok && exitErr.String() == "signal: interrupt" {
 			os.Exit(1)
@@ -250,12 +258,12 @@ func PreGitPush(ctx context.Context) string {
 		return ""
 	}
 
-	res := RunOutput(ctx, "git", "status").Must()
+	res := ShellExecOutput(ctx, "git", "status").Must()
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
 		needPush =
 			match.Match(res, "*Your branch and '*' have diverged*") &&
-				strings.Contains(RunOutput(ctx, "git", "reflog", "-1").Must(), "(amend)")
+				strings.Contains(ShellExecOutput(ctx, "git", "reflog", "-1").Must(), "(amend)")
 	}
 
 	if !needPush {

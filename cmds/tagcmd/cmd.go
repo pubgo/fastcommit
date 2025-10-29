@@ -32,7 +32,7 @@ func New() *cli.Command {
 						return
 					})
 
-					var tagText = strings.TrimSpace(utils.RunOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
+					var tagText = strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
 					tag, err := fzfutil.SelectWithFzf(ctx, strings.NewReader(tagText))
 					if err != nil {
 						return err
