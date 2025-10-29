@@ -10,8 +10,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bitfield/script"
+	"github.com/briandowns/spinner"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/log/logfields"
@@ -44,7 +46,7 @@ func GetStagedDiff(ctx context.Context, excludeFiles ...string) (r result.Result
 	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	filesOutput := RunOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...).Must()
+	filesOutput := ShellExecOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...).Must()
 
 	files := strings.Split(strings.TrimSpace(filesOutput), "\n")
 	if len(files) == 0 || files[0] == "" {
@@ -52,7 +54,7 @@ func GetStagedDiff(ctx context.Context, excludeFiles ...string) (r result.Result
 	}
 
 	// 获取暂存区的完整差异
-	diffOutput := RunOutput(ctx, append(diffCached, excludeFiles...)...).Must()
+	diffOutput := ShellExecOutput(ctx, append(diffCached, excludeFiles...)...).Must()
 
 	return r.WithValue(&GetStagedDiffRsp{
 		Files: files,
@@ -76,18 +78,18 @@ func GitPushTag(ctx context.Context, ver string) string {
 	}
 
 	log.Info().Msg("git push tag " + ver)
-	assert.Must(RunShell(ctx, "git", "tag", ver))
-	return RunOutput(ctx, "git", "push", "origin", ver).Must()
+	assert.Must(ShellExec(ctx, "git", "tag", ver))
+	return GitPush(ctx, "origin", ver)
 }
 
 func GitFetchAll(ctx context.Context) {
-	assert.Must(RunShell(ctx, "git", "fetch", "--prune", "--tags"))
+	assert.Must(ShellExec(ctx, "git", "fetch", "--prune", "--tags"))
 }
 
 func IsDirty() (r result.Result[bool]) {
 	output := result.Wrap(script.Exec("git status --porcelain").String()).
 		Log(func(e *zerolog.Event) {
-			e.Str(logfields.Msg, "failed to run git")
+			e.Str(logfields.Msg, "failed to gitRun git")
 		})
 
 	return result.MapTo(output, func(output string) bool {
@@ -98,7 +100,7 @@ func IsDirty() (r result.Result[bool]) {
 func GetCommitCount(branch string) (r result.Result[int]) {
 	shell := fmt.Sprintf("git rev-list %s --count", branch)
 	output := result.Wrap(script.Exec(shell).String()).Log(func(e *zerolog.Event) {
-		e.Str(logfields.Msg, fmt.Sprintf("failed to run shell %q", shell))
+		e.Str(logfields.Msg, fmt.Sprintf("failed to gitRun shell %q", shell))
 	})
 
 	return result.FlatMapTo(output, func(count string) result.Result[int] {
@@ -116,14 +118,14 @@ func GetCurrentBranch() result.Result[string] {
 			return strings.TrimSpace(s)
 		}).
 		MapErr(func(err error) error {
-			return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+			return fmt.Errorf("failed to gitRun shell %q, err=%w", shell, err)
 		})
 }
 
 func PushTag(tag string) result.Error {
 	shell := fmt.Sprintf("git push origin %s", tag)
 	return result.ErrOf(script.Exec(shell).Error()).Map(func(err error) error {
-		return fmt.Errorf("failed to run shell %q, err=%w", shell, err)
+		return fmt.Errorf("failed to gitRun shell %q, err=%w", shell, err)
 	})
 }
 
@@ -156,7 +158,7 @@ func GetCurrentBranchV1() (string, error) {
 }
 
 func ListAllBranches() ([]string, error) {
-	// First, fetch to ensure we have latest remote branches
+	// First, fetch to ensure we have the latest remote branches
 	fetchCmd := exec.Command("git", "fetch", "--prune")
 	if err := fetchCmd.Run(); err != nil {
 		// Continue even if fetch fails
@@ -558,19 +560,19 @@ type FileChange struct {
 
 // Status returns the output of git status.
 func Status() (string, error) {
-	return run("status", "--porcelain")
+	return gitRun("status", "--porcelain")
 }
 
 // DiffStat returns statistics for all changed files (staged and unstaged).
 func DiffStat() ([]FileChange, error) {
 	// Get staged file stats
-	stagedOutput, err := run("diff", "--numstat", "--cached")
+	stagedOutput, err := gitRun("diff", "--numstat", "--cached")
 	if err != nil {
 		return nil, err
 	}
 
 	// Get unstaged file stats
-	unstagedOutput, err := run("diff", "--numstat")
+	unstagedOutput, err := gitRun("diff", "--numstat")
 	if err != nil {
 		return nil, err
 	}
@@ -622,7 +624,7 @@ func DiffStat() ([]FileChange, error) {
 // Log returns recent commit messages (last 10).
 // Returns empty string if no commits exist yet.
 func Log() (string, error) {
-	output, err := run("log", "-10", "--oneline")
+	output, err := gitRun("log", "-10", "--oneline")
 	if err != nil && strings.Contains(err.Error(), "does not have any commits yet") {
 		return "", nil
 	}
@@ -633,26 +635,26 @@ func Log() (string, error) {
 // Add stages files for commit.
 func Add(files ...string) error {
 	args := append([]string{"add"}, files...)
-	_, err := run(args...)
+	_, err := gitRun(args...)
 
 	return err
 }
 
 // Commit creates a commit with the given message.
 func Commit(message string) error {
-	_, err := run("commit", "-m", message)
+	_, err := gitRun("commit", "-m", message)
 	return err
 }
 
 // CommitAmend amends the last commit with a new message.
 func CommitAmend(message string) error {
-	_, err := run("commit", "--amend", "-m", message)
+	_, err := gitRun("commit", "--amend", "-m", message)
 	return err
 }
 
 // LastCommitAuthor returns the author name and email of the last commit.
 func LastCommitAuthor() (name, email string, err error) {
-	output, err := run("log", "-1", "--format=%an|%ae")
+	output, err := gitRun("log", "-1", "--format=%an|%ae")
 	if err != nil {
 		return "", "", err
 	}
@@ -667,7 +669,7 @@ func LastCommitAuthor() (name, email string, err error) {
 
 // IsAheadOfRemote checks if the current branch is ahead of remote.
 func IsAheadOfRemote() (bool, error) {
-	output, err := run("status", "-sb")
+	output, err := gitRun("status", "-sb")
 	if err != nil {
 		return false, err
 	}
@@ -675,12 +677,11 @@ func IsAheadOfRemote() (bool, error) {
 	return strings.Contains(output, "ahead"), nil
 }
 
-// run executes a git command and returns its output.
-func run(args ...string) (string, error) {
+// gitRun executes a git command and returns its output.
+func gitRun(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 
 	var stdout, stderr bytes.Buffer
-
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -693,4 +694,28 @@ func run(args ...string) (string, error) {
 	}
 
 	return stdout.String(), nil
+}
+
+func GitPull(ctx context.Context, args ...string) (r result.Error) {
+	defer result.Recovery(&r)
+
+	//	"git", "pull", "--no-rebase"
+	now := time.Now()
+	args = append([]string{"git", "pull"}, args...)
+	output := result.Async(func() result.Result[string] { return ShellExecOutput(ctx, args...) })
+	time.Sleep(time.Millisecond * 20)
+
+	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "git pull: " })
+	spin.Start()
+	res := output.Await(ctx).Must()
+	spin.Stop()
+	if res != "" {
+		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
+	}
+	return r
+}
+
+func GitBranchSetUpstream(ctx context.Context, branch string) (r result.Error) {
+	ShellExecOutput(ctx, "git", "branch", "--set-upstream-to=origin/"+branch, branch).Catch(&r)
+	return r
 }

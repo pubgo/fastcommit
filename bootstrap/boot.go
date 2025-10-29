@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
+	"github.com/pubgo/fastcommit/cmds/pullcmd"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/buildinfo/version"
 	"github.com/pubgo/funk/v2/config"
@@ -39,6 +40,7 @@ func Main() {
 		historycmd.New(),
 		fastcommitcmd.New(),
 		configcmd.New(),
+		pullcmd.New(),
 	)
 }
 

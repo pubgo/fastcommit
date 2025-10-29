@@ -25,7 +25,7 @@ func New() *cli.Command {
 			{
 				Name: "rewrite",
 				Action: func(ctx context.Context, command *cli.Command) error {
-					assert.Exit(utils.RunShell(ctx, "cat", "~/.zsh_history", ">>", path))
+					assert.Exit(utils.ShellExec(ctx, "cat", "~/.zsh_history", ">>", path))
 					var data = lo.Must(os.ReadFile(path))
 					var set = mapset.NewSet[string]()
 					for _, line := range strings.Split(string(data), "\n") {

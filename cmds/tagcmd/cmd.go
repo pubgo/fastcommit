@@ -13,12 +13,17 @@ import (
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/urfave/cli/v3"
+	"github.com/yarlson/tap"
 
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/fastcommit/utils/fzfutil"
 )
 
 func New() *cli.Command {
+	var flags = new(struct {
+		fastCommit bool
+	})
+
 	return &cli.Command{
 		Name:  "tag",
 		Usage: "gen tag and push origin",
@@ -32,7 +37,7 @@ func New() *cli.Command {
 						return
 					})
 
-					var tagText = strings.TrimSpace(utils.RunOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
+					var tagText = strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
 					tag, err := fzfutil.SelectWithFzf(ctx, strings.NewReader(tagText))
 					if err != nil {
 						return err
@@ -43,10 +48,41 @@ func New() *cli.Command {
 				},
 			},
 		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "fast",
+				Usage:       "quickly generate tag",
+				Value:       flags.fastCommit,
+				Destination: &flags.fastCommit,
+			},
+		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			defer recovery.Exit()
 
 			utils.LogConfigAndBranch()
+
+			if flags.fastCommit {
+				tagName := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+					Message:      "git tag(enter):",
+					DefaultValue: "v0.0.1",
+					Placeholder:  "enter a tag",
+					Validate: func(s string) error {
+						if !strings.HasPrefix(s, "v") {
+							return fmt.Errorf("tag name must start with v")
+						}
+
+						_, err := semver.NewSemver(s)
+						return fmt.Errorf("tag is invalid, tag=%s err=%w", s, err)
+					},
+				}))
+
+				if tagName == "" {
+					return fmt.Errorf("tag name is empty")
+				}
+
+				fmt.Println(utils.GitPushTag(ctx, tagName))
+				return nil
+			}
 
 			var p = tea.NewProgram(initialModel())
 			m := assert.Must1(p.Run()).(model)
