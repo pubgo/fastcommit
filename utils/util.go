@@ -19,6 +19,7 @@ import (
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/pubgo/funk/v2/typex"
 	"github.com/rs/zerolog"
@@ -210,7 +211,7 @@ func RunOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
-	if err != nil {
+	if err != nil && !IsOsExit(err) {
 		log.Err(err, ctx).Msg("git error\n" + string(output))
 		return r.WithErr(err)
 	}
@@ -241,12 +242,12 @@ func Spin[T any](name string, do func() result.Result[T]) (r result.Result[T]) {
 //
 // nothing to commit, working tree clean
 
-func PreGitPush(ctx context.Context) (err error) {
-	defer result.RecoveryErr(&err)
+func PreGitPush(ctx context.Context) string {
+	defer recovery.Exit()
 
 	isDirty := IsDirty().Must()
 	if isDirty {
-		return
+		return ""
 	}
 
 	res := RunOutput(ctx, "git", "status").Must()
@@ -258,10 +259,10 @@ func PreGitPush(ctx context.Context) (err error) {
 	}
 
 	if !needPush {
-		return
+		return ""
 	}
 
-	return errors.New(GitPush(ctx, "--force-with-lease", "origin", GetBranchName()))
+	return GitPush(ctx, "--force-with-lease", "origin", GetBranchName())
 }
 
 var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
@@ -327,4 +328,23 @@ func Edit(editPath string) {
 	shellData := fmt.Sprintf(`%s "%s"`, editor, path)
 	log.Info().Msg(shellData)
 	assert.Exit1(script.Exec(shellData).Stdout())
+}
+
+func IsOsExit(err error) bool { return IsErrExit1(err) || IsErrSignalInterrupt(err) }
+
+func IsErrExit1(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "exit status 1")
+}
+
+func IsErrSignalInterrupt(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	exitErr, ok := errors.AsA[exec.ExitError](err)
+	return ok && strings.Contains(exitErr.String(), "signal: interrupt")
 }

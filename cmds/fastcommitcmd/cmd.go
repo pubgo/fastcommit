@@ -96,9 +96,9 @@ func New() *cli.Command {
 
 			utils.LogConfigAndBranch()
 
-			err := utils.PreGitPush(ctx)
-			if err != nil {
-				if shouldPullDueToRemoteUpdate(err.Error()) {
+			res := utils.PreGitPush(ctx)
+			if res != "" {
+				if shouldPullDueToRemoteUpdate(res) {
 					err := gitPull()
 					if err != nil {
 						if isMergeConflict() {
@@ -158,19 +158,19 @@ func New() *cli.Command {
 					assert.Must(utils.RunShell(ctx, "git", "commit", "-m", strconv.Quote(msg)))
 				}
 
-				utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
-				//if shouldPullDueToRemoteUpdate(pushOutput.Await(ctx).Must()) {
-				//	err := gitPull()
-				//	if err != nil {
-				//		if isMergeConflict() {
-				//			handleMergeConflict()
-				//		} else {
-				//			os.Exit(1)
-				//		}
-				//	} else {
-				//		informUserToAmendAndPush()
-				//	}
-				//}
+				res = utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+				if shouldPullDueToRemoteUpdate(res) {
+					err := gitPull()
+					if err != nil {
+						if isMergeConflict() {
+							handleMergeConflict()
+						} else {
+							os.Exit(1)
+						}
+					} else {
+						informUserToAmendAndPush()
+					}
+				}
 				return
 			}
 
@@ -246,7 +246,7 @@ func New() *cli.Command {
 
 func shouldPullDueToRemoteUpdate(msg string) bool {
 	return strings.Contains(msg, "stale info") ||
-		strings.Contains(msg, "rejected") ||
+		strings.Contains(msg, "[rejected]") ||
 		strings.Contains(msg, "failed to push") ||
 		strings.Contains(msg, "remote rejected")
 }

@@ -25,7 +25,7 @@ type configProvider struct {
 }
 
 func initConfig() {
-	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger("fastcommit"))))
+	slog.SetDefault(slog.New(log.NewSlog(log.GetLogger(""))))
 	log.SetEnableChecker(func(ctx context.Context, lvl log.Level, name, message string, fields log.Map) bool {
 		if running.Debug() {
 			return true
