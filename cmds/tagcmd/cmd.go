@@ -3,15 +3,18 @@ package tagcmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"sort"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
@@ -37,7 +40,7 @@ func New() *cli.Command {
 						return
 					})
 
-					var tagText = strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Must())
+					var tagText = strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "tag", "-n", "--sort=-committerdate").Unwrap())
 					tag, err := fzfutil.SelectWithFzf(ctx, strings.NewReader(tagText))
 					if err != nil {
 						return err
@@ -62,19 +65,43 @@ func New() *cli.Command {
 			utils.LogConfigAndBranch()
 
 			if flags.fastCommit {
-				tagName := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+				tags := utils.GetAllGitTags(ctx)
+
+				sort.Slice(tags, func(i, j int) bool { return tags[i].GreaterThanOrEqual(tags[j]) })
+				selectTags := lo.Map(tags, func(item *semver.Version, index int) tap.SelectOption[*semver.Version] {
+					return tap.SelectOption[*semver.Version]{
+						Value: item,
+						Label: item.Original(),
+					}
+				})
+				selectTags = lo.Chunk(selectTags, 10)[0]
+
+				tagResult := tap.Select[*semver.Version](ctx, tap.SelectOptions[*semver.Version]{
+					Message: "git tag(enter):",
+					Options: selectTags,
+				})
+
+				if tagResult == nil {
+					return nil
+				}
+
+				tagName := tap.Text(ctx, tap.TextOptions{
 					Message:      "git tag(enter):",
-					DefaultValue: "v0.0.1",
-					Placeholder:  "enter a tag",
+					InitialValue: tagResult.Original(),
+					DefaultValue: tagResult.Original(),
+					Placeholder:  "enter git tag",
 					Validate: func(s string) error {
 						if !strings.HasPrefix(s, "v") {
 							return fmt.Errorf("tag name must start with v")
 						}
 
 						_, err := semver.NewSemver(s)
+						if err == nil {
+							return nil
+						}
 						return fmt.Errorf("tag is invalid, tag=%s err=%w", s, err)
 					},
-				}))
+				})
 
 				if tagName == "" {
 					return fmt.Errorf("tag name is empty")
@@ -92,9 +119,23 @@ func New() *cli.Command {
 			}
 
 			tags := utils.GetAllGitTags(ctx)
-			ver := utils.GetNextTag(selected, tags)
+
+			var ver *semver.Version
+			if pathutil.IsExist(".version") {
+				vv := strings.TrimPrefix(string(lo.Must1(os.ReadFile(".version"))), "v")
+				tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return item.Core().String() == vv })
+				if len(tags) == 0 {
+					ver = lo.Must1(semver.NewSemver(fmt.Sprintf("%s-%s.1", lo.Must1(os.ReadFile(".version")), selected)))
+				} else {
+					ver = utils.GetNextTag(selected, tags)
+				}
+			} else {
+				ver = utils.GetNextTag(selected, tags)
+			}
+
 			if selected == envRelease {
-				ver = utils.GetNextReleaseTag(tags)
+				vv := string(lo.Must1(os.ReadFile(".version")))
+				ver = lo.Must1(semver.NewSemver(vv))
 			}
 
 			tagName := "v" + strings.TrimPrefix(ver.Original(), "v")
@@ -110,12 +151,7 @@ func New() *cli.Command {
 				return errors.Errorf("tag name is not valid: %s", tagName)
 			}
 
-			pushTag := result.Async(func() result.Result[string] {
-				return result.OK(utils.GitPushTag(ctx, tagName))
-			})
-			time.Sleep(time.Millisecond * 100)
-
-			output := utils.Spin("push tag: ", func() (r result.Result[string]) { return pushTag.Await() }).Must()
+			output := utils.GitPushTag(ctx, tagName)
 			if utils.IsRemoteTagExist(output) {
 				utils.Spin("fetch git tag: ", func() (r result.Result[any]) {
 					utils.GitFetchAll(ctx)

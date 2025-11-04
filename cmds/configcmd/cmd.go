@@ -47,7 +47,7 @@ func New() *cli.Command {
 						if pathutil.IsNotExist(configs.GetLocalEnvPath()) {
 							file := assert.Exit1(os.Create(configs.GetLocalEnvPath()))
 							defer file.Close()
-							for name, cfg := range config.LoadEnvConfigMap(configs.GetConfigPath()) {
+							for name, cfg := range config.LoadEnvMap(configs.GetConfigPath()) {
 								envData := strutil.FirstNotEmpty(cfg.Value, cfg.Default, "")
 								fmt.Fprintln(file, fmt.Sprintf(`%s=%q`, name, envData))
 							}
@@ -82,7 +82,7 @@ func New() *cli.Command {
 					case "env":
 						log.Info().Msgf("env path: %s", configs.GetEnvPath())
 						env.LoadFiles(configs.GetLocalEnvPath())
-						envMap := config.LoadEnvConfigMap(configs.GetConfigPath())
+						envMap := config.LoadEnvMap(configs.GetConfigPath())
 						for name, cfg := range envMap {
 							envData := env.Get(name)
 							if envData != "" {
@@ -93,8 +93,8 @@ func New() *cli.Command {
 						pretty.Println(lo.Values(envMap))
 					case "local":
 						log.Info().Msgf("local env path: %s", configs.GetLocalEnvPath())
-						data := result.Wrap(os.ReadFile(configs.GetLocalEnvPath())).Must()
-						dataMap := result.Wrap(godotenv.UnmarshalBytes(data)).Must()
+						data := result.Wrap(os.ReadFile(configs.GetLocalEnvPath())).Unwrap()
+						dataMap := result.Wrap(godotenv.UnmarshalBytes(data)).Unwrap()
 						pretty.Println(dataMap)
 					}
 

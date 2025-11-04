@@ -33,7 +33,7 @@ import (
 
 func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all remote tags")
-	output := ShellExecOutput(ctx, "git", "ls-remote", "--tags", "origin").Must()
+	output := ShellExecOutput(ctx, "git", "ls-remote", "--tags", "origin").Unwrap()
 	return lo.Map(strings.Split(output, "\n"), func(item string, index int) *semver.Version {
 		item = strings.TrimSpace(item)
 		if !strings.HasPrefix(item, "refs/tags/") {
@@ -56,7 +56,7 @@ func GetAllRemoteTags(ctx context.Context) []*semver.Version {
 
 func GetAllGitTags(ctx context.Context) []*semver.Version {
 	log.Info().Msg("get all tags")
-	var tagText = strings.TrimSpace(ShellExecOutput(ctx, "git", "tag").Must())
+	var tagText = strings.TrimSpace(ShellExecOutput(ctx, "git", "tag").Unwrap())
 	var tags = strings.Split(tagText, "\n")
 	var versions = make([]*semver.Version, 0, len(tags))
 
@@ -84,6 +84,10 @@ func GetCurMaxVer(ctx context.Context) *semver.Version {
 }
 
 func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
@@ -97,6 +101,10 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 }
 
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var maxVer = GetNextGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), pre) })
@@ -167,9 +175,11 @@ func GitPush(ctx context.Context, args ...string) string {
 	output := result.Async(func() result.Result[string] { return ShellExecOutput(ctx, args...) })
 	time.Sleep(time.Millisecond * 20)
 
-	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
+	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
+		s.Prefix = strings.Join(args, " ") + ":"
+	})
 	spin.Start()
-	res := output.Await(ctx).Must()
+	res := output.Await(ctx).Unwrap()
 	spin.Stop()
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -180,7 +190,7 @@ func GitPush(ctx context.Context, args ...string) string {
 func ShellExec(ctx context.Context, args ...string) (err error) {
 	defer result.RecoveryErr(&err)
 	now := time.Now()
-	res := ShellExecOutput(ctx, args...).Must()
+	res := ShellExecOutput(ctx, args...).Unwrap()
 
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -206,7 +216,7 @@ func ShellExecOutput(ctx context.Context, args ...string) (r result.Result[strin
 	cmdLine := strings.TrimSpace(strings.Join(args, " "))
 	log.Info().Msgf("shell: %s", cmdLine)
 
-	args = result.Wrap(shell.Fields(cmdLine, nil)).Must(func(e *zerolog.Event) {
+	args = result.Wrap(shell.Fields(cmdLine, nil)).UnwrapOrLog(func(e *zerolog.Event) {
 		e.Str("shell", cmdLine)
 	})
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
@@ -245,17 +255,17 @@ func Spin[T any](name string, do func() result.Result[T]) (r result.Result[T]) {
 func PreGitPush(ctx context.Context) string {
 	defer recovery.Exit()
 
-	isDirty := IsDirty().Must()
+	isDirty := IsDirty().Unwrap()
 	if isDirty {
 		return ""
 	}
 
-	res := ShellExecOutput(ctx, "git", "status").Must()
+	res := ShellExecOutput(ctx, "git", "status").Unwrap()
 	needPush := strings.Contains(res, "Your branch is ahead of") && strings.Contains(res, "(use \"git push\" to publish your local commits)")
 	if !needPush {
 		needPush =
 			match.Match(res, "*Your branch and '*' have diverged*") &&
-				strings.Contains(ShellExecOutput(ctx, "git", "reflog", "-1").Must(), "(amend)")
+				strings.Contains(ShellExecOutput(ctx, "git", "reflog", "-1").Unwrap(), "(amend)")
 	}
 
 	if !needPush {
@@ -265,7 +275,7 @@ func PreGitPush(ctx context.Context) string {
 	return GitPush(ctx, "--force-with-lease", "origin", GetBranchName())
 }
 
-var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Must() })
+var GetBranchName = sync.OnceValue(func() string { return GetCurrentBranch().Unwrap() })
 
 func LogConfigAndBranch() {
 	log.Info().Msgf("branch: %s", GetBranchName())
@@ -323,7 +333,7 @@ func GetEditor() (r result.Result[string]) {
 
 func Edit(editPath string) {
 	log.Info().Msgf("edit path: %s", editPath)
-	editor := GetEditor().Must()
+	editor := GetEditor().Unwrap()
 	path := assert.Exit1(filepath.Abs(editPath))
 	shellData := fmt.Sprintf(`%s "%s"`, editor, path)
 	log.Info().Msg(shellData)

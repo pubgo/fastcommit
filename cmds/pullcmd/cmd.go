@@ -66,7 +66,7 @@ func New() *cli.Command {
 
 			utils.LogConfigAndBranch()
 
-			isDirty := utils.IsDirty().Must()
+			isDirty := utils.IsDirty().Unwrap()
 			if isDirty {
 				return
 			}

@@ -18,6 +18,7 @@ import (
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/sashabaranov/go-openai"
 	"github.com/urfave/cli/v3"
@@ -112,30 +113,32 @@ func New() *cli.Command {
 				}
 			}
 
-			isDirty := utils.IsDirty().Must()
+			isDirty := utils.IsDirty().Unwrap()
 			if !isDirty {
 				return
 			}
 
-			for _, cfg := range params.CommitCfg {
-				if !cfg.GenVersion {
-					continue
-				}
+			if pathutil.IsNotExist(".version") {
+				for _, cfg := range params.CommitCfg {
+					if !cfg.GenVersion {
+						continue
+					}
 
-				allTags := utils.GetAllGitTags(ctx)
-				tagName := "v0.0.1"
-				if len(allTags) > 0 {
-					ver := utils.GetNextReleaseTag(allTags)
-					tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
+					allTags := utils.GetAllGitTags(ctx)
+					tagName := "v0.0.1"
+					if len(allTags) > 0 {
+						ver := utils.GetNextReleaseTag(allTags)
+						tagName = "v" + strings.TrimPrefix(ver.Original(), "v")
+					}
+					assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
+					break
 				}
-				assert.Exit(os.WriteFile(".version", []byte(tagName), 0644))
-				break
 			}
 
 			//username := strings.TrimSpace(assert.Must1(utils.ShellExecOutput("git", "config", "get", "user.name")))
 
 			if flags.fastCommit {
-				preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Must())
+				preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Unwrap())
 				prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
 				msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
@@ -151,7 +154,7 @@ func New() *cli.Command {
 				}
 
 				assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
-				res := utils.ShellExecOutput(ctx, "git", "status").Must()
+				res := utils.ShellExecOutput(ctx, "git", "status").Unwrap()
 				if strings.Contains(preMsg, prefixMsg) && !strings.Contains(res, `(use "git commit" to conclude merge)`) {
 					assert.Must(utils.ShellExec(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
 				} else {
@@ -176,7 +179,7 @@ func New() *cli.Command {
 
 			assert.Must(utils.ShellExec(ctx, "git", "add", "--update"))
 
-			diff := utils.GetStagedDiff(ctx).Must()
+			diff := utils.GetStagedDiff(ctx).Unwrap()
 			if diff == nil || len(diff.Files) == 0 {
 				return nil
 			}

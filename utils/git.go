@@ -46,7 +46,7 @@ func GetStagedDiff(ctx context.Context, excludeFiles ...string) (r result.Result
 	diffCached := []string{"git", "diff", "--cached", "--diff-algorithm=minimal"}
 
 	// 获取暂存区文件的名称
-	filesOutput := ShellExecOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...).Must()
+	filesOutput := ShellExecOutput(ctx, append(diffCached, append([]string{"--name-only"}, excludeFiles...)...)...).Unwrap()
 
 	files := strings.Split(strings.TrimSpace(filesOutput), "\n")
 	if len(files) == 0 || files[0] == "" {
@@ -54,7 +54,7 @@ func GetStagedDiff(ctx context.Context, excludeFiles ...string) (r result.Result
 	}
 
 	// 获取暂存区的完整差异
-	diffOutput := ShellExecOutput(ctx, append(diffCached, excludeFiles...)...).Must()
+	diffOutput := ShellExecOutput(ctx, append(diffCached, excludeFiles...)...).Unwrap()
 
 	return r.WithValue(&GetStagedDiffRsp{
 		Files: files,
@@ -124,7 +124,7 @@ func GetCurrentBranch() result.Result[string] {
 
 func PushTag(tag string) result.Error {
 	shell := fmt.Sprintf("git push origin %s", tag)
-	return result.ErrOf(script.Exec(shell).Error()).Map(func(err error) error {
+	return result.ErrOf(script.Exec(shell).Error()).MapErr(func(err error) error {
 		return fmt.Errorf("failed to gitRun shell %q, err=%w", shell, err)
 	})
 }
@@ -707,7 +707,7 @@ func GitPull(ctx context.Context, args ...string) (r result.Error) {
 
 	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "git pull: " })
 	spin.Start()
-	res := output.Await(ctx).Must()
+	res := output.Await(ctx).Unwrap()
 	spin.Stop()
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
@@ -716,6 +716,6 @@ func GitPull(ctx context.Context, args ...string) (r result.Error) {
 }
 
 func GitBranchSetUpstream(ctx context.Context, branch string) (r result.Error) {
-	ShellExecOutput(ctx, "git", "branch", "--set-upstream-to=origin/"+branch, branch).Catch(&r)
+	ShellExecOutput(ctx, "git", "branch", "--set-upstream-to=origin/"+branch, branch).ThrowErr(&r)
 	return r
 }
