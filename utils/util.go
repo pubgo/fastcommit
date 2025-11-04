@@ -84,6 +84,10 @@ func GetCurMaxVer(ctx context.Context) *semver.Version {
 }
 
 func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		return lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
 	})
@@ -97,6 +101,10 @@ func GetNextReleaseTag(tags []*semver.Version) *semver.Version {
 }
 
 func GetNextTag(pre string, tags []*semver.Version) *semver.Version {
+	if len(tags) == 0 {
+		return semver.Must(semver.NewSemver("v0.0.1"))
+	}
+
 	var maxVer = GetNextGitMaxTag(tags)
 	var curMaxVer = typex.DoBlock1(func() *semver.Version {
 		tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return strings.Contains(item.String(), pre) })
@@ -167,7 +175,7 @@ func GitPush(ctx context.Context, args ...string) string {
 	output := result.Async(func() result.Result[string] { return ShellExecOutput(ctx, args...) })
 	time.Sleep(time.Millisecond * 20)
 
-	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = "push git message: " })
+	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) { s.Prefix = strings.Join(args, " ") + ":" })
 	spin.Start()
 	res := output.Await(ctx).Must()
 	spin.Stop()
