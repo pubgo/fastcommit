@@ -3,6 +3,7 @@ package tagcmd
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
@@ -62,19 +64,42 @@ func New() *cli.Command {
 			utils.LogConfigAndBranch()
 
 			if flags.fastCommit {
-				tagName := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+				tags := utils.GetAllGitTags(ctx)
+
+				sort.Slice(tags, func(i, j int) bool { return tags[i].GreaterThanOrEqual(tags[j]) })
+				selectTags := lo.Map(tags, func(item *semver.Version, index int) tap.SelectOption[*semver.Version] {
+					return tap.SelectOption[*semver.Version]{
+						Value: item,
+						Label: item.Original(),
+					}
+				})
+
+				tagResult := tap.Select[*semver.Version](ctx, tap.SelectOptions[*semver.Version]{
+					Message: "git tag(enter):",
+					Options: selectTags,
+				})
+
+				if tagResult == nil {
+					return nil
+				}
+
+				tagName := tap.Text(ctx, tap.TextOptions{
 					Message:      "git tag(enter):",
-					DefaultValue: "v0.0.1",
-					Placeholder:  "enter a tag",
+					InitialValue: tagResult.Original(),
+					DefaultValue: tagResult.Original(),
+					Placeholder:  "enter git tag",
 					Validate: func(s string) error {
 						if !strings.HasPrefix(s, "v") {
 							return fmt.Errorf("tag name must start with v")
 						}
 
 						_, err := semver.NewSemver(s)
+						if err == nil {
+							return nil
+						}
 						return fmt.Errorf("tag is invalid, tag=%s err=%w", s, err)
 					},
-				}))
+				})
 
 				if tagName == "" {
 					return fmt.Errorf("tag name is empty")
