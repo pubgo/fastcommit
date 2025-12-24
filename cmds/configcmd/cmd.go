@@ -18,27 +18,27 @@ import (
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
 	"github.com/pubgo/funk/v2/strutil"
+	"github.com/pubgo/redant"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v3"
 )
 
-func New() *cli.Command {
-	return &cli.Command{
-		Name:  "config",
-		Usage: "config management",
-		Commands: []*cli.Command{
+func New() *redant.Command {
+	return &redant.Command{
+		Use:   "config",
+		Short: "config management",
+		Children: []*redant.Command{
 			{
-				Name:      "edit",
-				Usage:     "edit config, env or local env file, args: [config|env|local], default:config",
-				UsageText: "fastcommit config edit [config|env|local]",
-				Action: func(ctx context.Context, command *cli.Command) error {
-					args := command.Args()
-					if args.Len() == 0 {
+				Use:   "edit",
+				Short: "edit config, env or local env file, args: [config|env|local], default:config",
+				Handler: func(ctx context.Context, i *redant.Invocation) error {
+					command := i.Command
+					args := command.Args
+					if len(args) == 0 {
 						utils.Edit(configs.GetConfigPath())
 						return nil
 					}
 
-					switch args.First() {
+					switch args[0].Value.String() {
 					case "config":
 						utils.Edit(configs.GetConfigPath())
 					case "env":
@@ -60,14 +60,14 @@ func New() *cli.Command {
 			},
 
 			{
-				Name:      "show",
-				Usage:     "show config, env or local env file, args: [config|env|local], default:config",
-				UsageText: "fastcommit config show [config|env|local]",
-				Action: func(ctx context.Context, command *cli.Command) error {
+				Use:   "show",
+				Short: "show config, env or local env file, args: [config|env|local], default:config",
+				Handler: func(ctx context.Context, i *redant.Invocation) error {
 					defer recovery.Exit()
 
-					args := command.Args()
-					if args.Len() == 0 || args.First() == "config" {
+					command := i.Command
+					args := command.Args
+					if len(args) == 0 || args[0].Value.String() == "config" {
 						cfgPath := configs.GetConfigPath()
 						log.Info().Msgf("config path: %s", cfgPath)
 
@@ -78,7 +78,7 @@ func New() *cli.Command {
 						return nil
 					}
 
-					switch args.First() {
+					switch args[0].Value.String() {
 					case "env":
 						log.Info().Msgf("env path: %s", configs.GetEnvPath())
 						env.LoadFiles(configs.GetLocalEnvPath())

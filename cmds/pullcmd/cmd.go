@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/x/term"
@@ -14,7 +13,7 @@ import (
 	"github.com/pubgo/funk/v2/errors"
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/result"
-	"github.com/urfave/cli/v3"
+	"github.com/pubgo/redant"
 )
 
 type Config struct {
@@ -26,26 +25,24 @@ type cmdParams struct {
 	CommitCfg    []*Config
 }
 
-func New() *cli.Command {
-	app := &cli.Command{
-		Name:                   "pull",
-		Suggest:                true,
-		UseShortOptionHandling: true,
-		ShellComplete:          cli.DefaultAppComplete,
-		Usage:                  "git pull from remote origin",
-		EnableShellCompletion:  true,
-		Flags:                  []cli.Flag{},
-		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
-			if !term.IsTerminal(os.Stdin.Fd()) {
-				return ctx, fmt.Errorf("stdin is not terminal")
-			}
+func New() *redant.Command {
+	app := &redant.Command{
+		Use:   "pull",
+		Short: "git pull from remote origin",
+		Middleware: func(next redant.HandlerFunc) redant.HandlerFunc {
+			return func(ctx context.Context, i *redant.Invocation) error {
+				if !term.IsTerminal(os.Stdin.Fd()) {
+					return fmt.Errorf("stdin is not terminal")
+				}
 
-			if utils.IsHelp() {
-				return ctx, cli.ShowAppHelp(command)
+				if utils.IsHelp() {
+					return redant.DefaultHelpFn()(ctx, i)
+				}
+
+				return next(ctx, i)
 			}
-			return ctx, nil
 		},
-		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+		Handler: func(ctx context.Context, i *redant.Invocation) (gErr error) {
 			defer result.RecoveryErr(&gErr, func(err error) error {
 				if errors.Is(err, context.Canceled) {
 					return nil
@@ -58,10 +55,10 @@ func New() *cli.Command {
 				return err
 			})
 
-			if command.Args().Len() > 0 {
-				log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
-				cli.ShowRootCommandHelpAndExit(command, 1)
-				return nil
+			command := i.Command
+			if len(command.Args) > 0 {
+				log.Error(ctx).Msgf("unknown command:%v", command.Args)
+				return redant.DefaultHelpFn()(ctx, i)
 			}
 
 			utils.LogConfigAndBranch()
@@ -85,7 +82,6 @@ func New() *cli.Command {
 		},
 	}
 
-	sort.Sort(cli.FlagsByName(app.Flags))
 	return app
 }
 

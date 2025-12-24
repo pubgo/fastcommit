@@ -11,30 +11,31 @@ import (
 	semver "github.com/hashicorp/go-version"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/pubgo/redant"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/fastcommit/utils/fzfutil"
 )
 
-func New() *cli.Command {
+func New() *redant.Command {
 	var flags = new(struct {
 		fastCommit bool
 	})
 
-	return &cli.Command{
-		Name:  "tag",
-		Usage: "gen tag and push origin",
-		Commands: []*cli.Command{
+	return &redant.Command{
+		Use:   "tag",
+		Short: "gen tag and push origin",
+		Children: []*redant.Command{
 			{
-				Name:  "list",
-				Usage: "list all tags",
-				Action: func(ctx context.Context, command *cli.Command) error {
+				Use:   "list",
+				Short: "list all tags",
+				Handler: func(ctx context.Context, command *redant.Invocation) error {
 					utils.Spin("fetch git tag: ", func() (r result.Result[any]) {
 						utils.GitFetchAll(ctx)
 						return
@@ -51,19 +52,17 @@ func New() *cli.Command {
 				},
 			},
 		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "fast",
-				Usage:       "quickly generate tag",
-				Value:       flags.fastCommit,
-				Destination: &flags.fastCommit,
+		Options: []redant.Option{
+			{
+				Flag:        "fast",
+				Description: "Quickly generate tag.",
+				Value:       redant.BoolOf(&flags.fastCommit),
 			},
 		},
-		Action: func(ctx context.Context, command *cli.Command) error {
+		Handler: func(ctx context.Context, i *redant.Invocation) error {
 			defer recovery.Exit()
 
 			utils.LogConfigAndBranch()
-
 			if flags.fastCommit {
 				tags := utils.GetAllGitTags(ctx)
 
@@ -123,6 +122,11 @@ func New() *cli.Command {
 			var ver *semver.Version
 			if pathutil.IsExist(".version") {
 				vv := strings.TrimPrefix(string(lo.Must1(os.ReadFile(".version"))), "v")
+				maxTag := lo.MaxBy(tags, func(a *semver.Version, b *semver.Version) bool { return a.Compare(b) > 0 })
+				if maxTag != nil && maxTag.Core().String() != vv {
+					log.Warn().Str("max-version", maxTag.Core().String()).Msg("current version is not equal to .version")
+				}
+
 				tags = lo.Filter(tags, func(item *semver.Version, index int) bool { return item.Core().String() == vv })
 				if len(tags) == 0 {
 					ver = lo.Must1(semver.NewSemver(fmt.Sprintf("%s-%s.1", lo.Must1(os.ReadFile(".version")), selected)))
