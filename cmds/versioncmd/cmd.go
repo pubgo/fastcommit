@@ -4,19 +4,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/v2/buildinfo/version"
 	"github.com/pubgo/funk/v2/recovery"
 	"github.com/pubgo/funk/v2/running"
-	"github.com/urfave/cli/v3"
+	"github.com/pubgo/redant"
 )
 
-func New() *cli.Command {
-	return &cli.Command{
-		Name:    "version",
+func New() *redant.Command {
+	return &redant.Command{
+		Use:     "version",
 		Aliases: []string{"v"},
-		Usage:   utils.UsageDesc("%s version info", version.Project()),
-		Action: func(ctx context.Context, command *cli.Command) error {
+		Short:   "version info",
+		Handler: func(ctx context.Context, i *redant.Invocation) error {
 			defer recovery.Exit()
 			fmt.Println("project:", version.Project())
 			fmt.Println("version:", version.Version())

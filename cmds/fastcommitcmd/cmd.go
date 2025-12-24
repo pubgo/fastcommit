@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
 	"github.com/pubgo/funk/v2/assert"
@@ -20,8 +18,8 @@ import (
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/pathutil"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/pubgo/redant"
 	"github.com/sashabaranov/go-openai"
-	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
 	"github.com/pubgo/fastcommit/utils"
@@ -36,43 +34,28 @@ type cmdParams struct {
 	CommitCfg    []*Config
 }
 
-func New() *cli.Command {
+func New() *redant.Command {
 	var flags = new(struct {
 		showPrompt bool
 		fastCommit bool
 	})
-	app := &cli.Command{
-		Name:                   "commit",
-		Suggest:                true,
-		UseShortOptionHandling: true,
-		ShellComplete:          cli.DefaultAppComplete,
-		Usage:                  "Intelligent generation of git commit message",
-		EnableShellCompletion:  true,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "prompt",
-				Usage:       "show prompt",
-				Value:       flags.showPrompt,
-				Destination: &flags.showPrompt,
-			},
-			&cli.BoolFlag{
-				Name:        "fast",
-				Usage:       "quickly generate messages without prompts",
-				Value:       flags.fastCommit,
-				Destination: &flags.fastCommit,
-			},
-		},
-		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
-			if !term.IsTerminal(os.Stdin.Fd()) {
-				return ctx, fmt.Errorf("stdin is not terminal")
-			}
 
-			if utils.IsHelp() {
-				return ctx, cli.ShowAppHelp(command)
-			}
-			return ctx, nil
+	app := &redant.Command{
+		Use:   "commit",
+		Short: "Intelligent generation of git commit message",
+		Options: []redant.Option{
+			{
+				Flag:        "prompt",
+				Description: "Show prompt.",
+				Value:       redant.BoolOf(&flags.showPrompt),
+			},
+			{
+				Flag:        "fast",
+				Description: "Quickly generate messages without prompts.",
+				Value:       redant.BoolOf(&flags.fastCommit),
+			},
 		},
-		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+		Handler: func(ctx context.Context, i *redant.Invocation) (gErr error) {
 			di := dixcontext.Get(ctx)
 			var params cmdParams
 			params = dix.Inject(di, params)
@@ -89,10 +72,10 @@ func New() *cli.Command {
 				return err
 			})
 
-			if command.Args().Len() > 0 {
-				log.Error(ctx).Msgf("unknown command:%v", command.Args().Slice())
-				cli.ShowRootCommandHelpAndExit(command, 1)
-				return nil
+			command := i.Command
+			if len(command.Args) > 0 {
+				log.Error(ctx).Msgf("unknown command:%v", command.Args)
+				return redant.DefaultHelpFn()(ctx, i)
 			}
 
 			utils.LogConfigAndBranch()
@@ -243,7 +226,6 @@ func New() *cli.Command {
 		},
 	}
 
-	sort.Sort(cli.FlagsByName(app.Flags))
 	return app
 }
 

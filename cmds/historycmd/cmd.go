@@ -11,20 +11,20 @@ import (
 	"github.com/pubgo/fastcommit/utils"
 	"github.com/pubgo/funk/v2/assert"
 	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/redant"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v3"
 )
 
 var path = "/Users/barry/Documents/git/zshrc.123.history"
 
-func New() *cli.Command {
-	return &cli.Command{
-		Name:  "history",
-		Usage: "shell history command management",
-		Commands: []*cli.Command{
+func New() *redant.Command {
+	return &redant.Command{
+		Use:   "history",
+		Short: "shell history command management",
+		Children: []*redant.Command{
 			{
-				Name: "rewrite",
-				Action: func(ctx context.Context, command *cli.Command) error {
+				Use: "rewrite",
+				Handler: func(ctx context.Context, command *redant.Invocation) error {
 					assert.Exit(utils.ShellExec(ctx, "cat", "~/.zsh_history", ">>", path))
 					var data = lo.Must(os.ReadFile(path))
 					var set = mapset.NewSet[string]()
@@ -40,7 +40,7 @@ func New() *cli.Command {
 				},
 			},
 		},
-		Action: func(ctx context.Context, command *cli.Command) error {
+		Handler: func(ctx context.Context, command *redant.Invocation) error {
 			defer recovery.Exit()
 
 			var data = lo.Must(os.ReadFile(path))

@@ -16,22 +16,22 @@ import (
 	"github.com/pubgo/funk/v2/log"
 	"github.com/pubgo/funk/v2/pretty"
 	"github.com/pubgo/funk/v2/result"
+	"github.com/pubgo/redant"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v3"
 	"github.com/yarlson/tap"
 
 	"github.com/pubgo/fastcommit/utils/githubclient"
 )
 
-func New() *cli.Command {
-	return &cli.Command{
-		Name:  "upgrade",
-		Usage: "self upgrade management",
-		Commands: []*cli.Command{
+func New() *redant.Command {
+	return &redant.Command{
+		Use:   "upgrade",
+		Short: "self upgrade management",
+		Children: []*redant.Command{
 			{
-				Name: "list",
-				Action: func(ctx context.Context, command *cli.Command) error {
+				Use: "list",
+				Handler: func(ctx context.Context, i *redant.Invocation) error {
 					client := githubclient.NewPublicRelease("pubgo", "fastcommit")
 					releases := assert.Must1(client.List(ctx))
 
@@ -63,7 +63,7 @@ func New() *cli.Command {
 				},
 			},
 		},
-		Action: func(ctx context.Context, command *cli.Command) (gErr error) {
+		Handler: func(ctx context.Context, i *redant.Invocation) (gErr error) {
 			defer result.RecoveryErr(&gErr, func(err error) error {
 				if errors.Is(err, context.Canceled) {
 					return nil

@@ -10,26 +10,21 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
-	"github.com/pubgo/fastcommit/cmds/pullcmd"
-	"github.com/pubgo/funk/v2/assert"
-	"github.com/pubgo/funk/v2/buildinfo/version"
-	"github.com/pubgo/funk/v2/config"
-	"github.com/pubgo/funk/v2/errors"
-	"github.com/pubgo/funk/v2/features/featureflags"
-	"github.com/pubgo/funk/v2/log"
-	"github.com/pubgo/funk/v2/recovery"
-	"github.com/pubgo/funk/v2/running"
-	"github.com/samber/lo"
-	_ "github.com/sashabaranov/go-openai"
-	"github.com/urfave/cli/v3"
-
 	"github.com/pubgo/fastcommit/cmds/configcmd"
 	"github.com/pubgo/fastcommit/cmds/fastcommitcmd"
 	"github.com/pubgo/fastcommit/cmds/historycmd"
+	"github.com/pubgo/fastcommit/cmds/pullcmd"
 	"github.com/pubgo/fastcommit/cmds/tagcmd"
 	"github.com/pubgo/fastcommit/cmds/upgradecmd"
 	"github.com/pubgo/fastcommit/cmds/versioncmd"
 	"github.com/pubgo/fastcommit/utils"
+	"github.com/pubgo/funk/v2/assert"
+	"github.com/pubgo/funk/v2/config"
+	"github.com/pubgo/funk/v2/errors"
+	"github.com/pubgo/funk/v2/log"
+	"github.com/pubgo/funk/v2/recovery"
+	"github.com/pubgo/redant"
+	_ "github.com/sashabaranov/go-openai"
 )
 
 func Main() {
@@ -44,7 +39,7 @@ func Main() {
 	)
 }
 
-func run(cmds ...*cli.Command) {
+func run(cmds ...*redant.Command) {
 	defer recovery.Exit(func(err error) error {
 		if errors.Is(err, context.Canceled) {
 			return nil
@@ -58,32 +53,28 @@ func run(cmds ...*cli.Command) {
 		return nil
 	})
 
-	app := &cli.Command{
-		Name:                   "fastcommit",
-		Suggest:                true,
-		UseShortOptionHandling: true,
-		ShellComplete:          cli.DefaultAppComplete,
-		Usage:                  "Intelligent generation of git commit message",
-		Version:                version.ReleaseVersion(),
-		Commands:               cmds,
-		EnableShellCompletion:  true,
-		Flags:                  append(featureflags.GetFlags(), lo.ToPtr(running.DebugFlag)),
-		Before: func(ctx context.Context, command *cli.Command) (context.Context, error) {
-			if !term.IsTerminal(os.Stdin.Fd()) {
-				return ctx, fmt.Errorf("stdin is not terminal")
-			}
+	app := &redant.Command{
+		Use:      "fastcommit",
+		Short:    "Intelligent generation of git commit message",
+		Children: cmds,
+		Middleware: func(next redant.HandlerFunc) redant.HandlerFunc {
+			return func(ctx context.Context, i *redant.Invocation) error {
+				if utils.IsHelp() {
+					return redant.DefaultHelpFn()(ctx, i)
+				}
 
-			if utils.IsHelp() {
-				return ctx, cli.ShowAppHelp(command)
-			}
+				if !term.IsTerminal(os.Stdin.Fd()) {
+					return fmt.Errorf("stdin is not terminal")
+				}
 
-			initConfig()
-			di := dix.New(dix.WithValuesNull())
-			di.Provide(config.Load[configProvider])
-			di.Provide(utils.NewOpenaiClient)
-			return dixcontext.Create(ctx, di), nil
+				initConfig()
+				di := dix.New(dix.WithValuesNull())
+				di.Provide(config.Load[configProvider])
+				di.Provide(utils.NewOpenaiClient)
+				return next(dixcontext.Create(ctx, di), i)
+			}
 		},
 	}
 
-	assert.Must(app.Run(utils.Context(), os.Args))
+	assert.Must(app.Run(utils.Context()))
 }
