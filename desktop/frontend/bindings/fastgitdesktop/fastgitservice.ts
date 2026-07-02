@@ -13,6 +13,10 @@ export function GetGitHubAuthStatus(): $CancellablePromise<$models.GitHubAuthSta
     return $Call.ByID(2218531742);
 }
 
+export function GetGitHubKeychainStatus(): $CancellablePromise<$models.GitHubKeychainStatus> {
+    return $Call.ByID(3491856856);
+}
+
 export function GetModules(): $CancellablePromise<$models.DesktopModule[] | null> {
     return $Call.ByID(1211788486);
 }

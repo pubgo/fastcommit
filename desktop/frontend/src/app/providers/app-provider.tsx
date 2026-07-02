@@ -780,6 +780,7 @@ function createInitialState(): AppState {
     repoNamespaces,
     repoStatus: "加载中...",
     githubAuthStatus: null,
+    githubKeychainStatus: null,
     projectSettings: prefs.projectSettings ?? {},
     modules: [],
     selectedModuleId: null,
@@ -810,6 +811,25 @@ export function AppProvider({ children }: AppProviderProps) {
           configured: false,
           source: "none",
           message: `GitHub 状态读取失败: ${String(error)}`,
+        },
+      }));
+    }
+  }, []);
+
+  const refreshGitHubKeychainStatus = useCallback(async () => {
+    try {
+      const status = await backend.getGitHubKeychainStatus();
+      setState((prev) => ({
+        ...prev,
+        githubKeychainStatus: status,
+      }));
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        githubKeychainStatus: {
+          supported: true,
+          hasToken: false,
+          message: `Keychain 状态读取失败: ${String(error)}`,
         },
       }));
     }
@@ -920,7 +940,7 @@ export function AppProvider({ children }: AppProviderProps) {
             catalog: repoChanged ? createEmptyCatalog() : prev.catalog,
           };
         });
-        void refreshGitHubAuthStatus();
+        void Promise.all([refreshGitHubAuthStatus(), refreshGitHubKeychainStatus()]);
       } catch (error) {
         const message = String(error);
         setState((prev) => ({
@@ -937,7 +957,7 @@ export function AppProvider({ children }: AppProviderProps) {
         setBusy(false);
       }
     },
-    [refreshGitHubAuthStatus, setBusy]
+    [refreshGitHubAuthStatus, refreshGitHubKeychainStatus, setBusy]
   );
 
   const setSelectedModule = useCallback((moduleId: string) => {
@@ -1144,12 +1164,12 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const setGitHubToken = useCallback(async (token: string) => {
     await backend.setGitHubToken(token);
-    await refreshGitHubAuthStatus();
+    await Promise.all([refreshGitHubAuthStatus(), refreshGitHubKeychainStatus()]);
     setState((prev) => ({
       ...prev,
-      repoStatus: token.trim() ? "GitHub Token 已更新（当前会话）" : prev.repoStatus,
+      repoStatus: "GitHub 认证状态已更新",
     }));
-  }, [refreshGitHubAuthStatus]);
+  }, [refreshGitHubAuthStatus, refreshGitHubKeychainStatus]);
 
   const updateProjectSettings = useCallback((patch: Partial<ProjectSettings>) => {
     setState((prev) => {
@@ -1491,6 +1511,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setModulePaneCollapsed,
       refresh,
       refreshGitHubAuthStatus,
+      refreshGitHubKeychainStatus,
       addRepo,
       switchRepo,
       removeRepo,
@@ -1517,6 +1538,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setModulePaneCollapsed,
       refresh,
       refreshGitHubAuthStatus,
+      refreshGitHubKeychainStatus,
       addRepo,
       switchRepo,
       removeRepo,

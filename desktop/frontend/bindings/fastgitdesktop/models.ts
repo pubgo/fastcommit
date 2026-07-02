@@ -36,6 +36,12 @@ export interface GitHubAuthStatus {
     "message": string;
 }
 
+export interface GitHubKeychainStatus {
+    "supported": boolean;
+    "hasToken": boolean;
+    "message": string;
+}
+
 export interface ModuleAction {
     "id": string;
     "title": string;

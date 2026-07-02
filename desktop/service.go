@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -65,6 +66,12 @@ type GitHubAuthStatus struct {
 	Message    string `json:"message"`
 }
 
+type GitHubKeychainStatus struct {
+	Supported bool   `json:"supported"`
+	HasToken  bool   `json:"hasToken"`
+	Message   string `json:"message"`
+}
+
 type ActionRunRequest struct {
 	ModuleID string            `json:"moduleID"`
 	ActionID string            `json:"actionID"`
@@ -72,9 +79,19 @@ type ActionRunRequest struct {
 }
 
 type FastgitService struct {
-	repoRoot    string
-	githubToken string
+	repoRoot          string
+	githubToken       string
+	githubTokenSource string
+	githubTokenNote   string
 }
+
+const (
+	keychainServiceName      = "com.pubgo.fastgit.github-token"
+	keychainAccountName      = "github-token"
+	keychainSaveTokenPrefix  = "__FASTGIT_KEYCHAIN_SAVE__:"
+	keychainLoginTokenMarker = "__FASTGIT_KEYCHAIN_LOGIN__"
+	keychainDeleteTokenMark  = "__FASTGIT_KEYCHAIN_DELETE__"
+)
 
 type desktopSSHAuth struct {
 	user            string
@@ -122,16 +139,69 @@ func (s *FastgitService) SetRepoRoot(path string) error {
 }
 
 func (s *FastgitService) SetGitHubToken(token string) {
-	s.githubToken = strings.TrimSpace(token)
+	trimmed := strings.TrimSpace(token)
+
+	switch {
+	case strings.HasPrefix(trimmed, keychainSaveTokenPrefix):
+		rawToken := strings.TrimSpace(strings.TrimPrefix(trimmed, keychainSaveTokenPrefix))
+		if rawToken == "" {
+			s.githubTokenNote = "保存 Keychain 失败: token 为空"
+			return
+		}
+		if err := saveTokenToKeychain(rawToken); err != nil {
+			s.githubTokenNote = fmt.Sprintf("保存 Keychain 失败: %v", err)
+			return
+		}
+		s.githubToken = rawToken
+		s.githubTokenSource = "keychain"
+		s.githubTokenNote = "Token 已保存到 Keychain，并已登录当前会话"
+		return
+	case trimmed == keychainLoginTokenMarker:
+		if err := authenticateWithBiometricsOrPasscode("Use Touch ID or system password to unlock GitHub token"); err != nil {
+			s.githubTokenNote = fmt.Sprintf("设备认证失败: %v", err)
+			return
+		}
+		rawToken, err := loadTokenFromKeychain()
+		if err != nil {
+			s.githubTokenNote = fmt.Sprintf("Keychain 登录失败: %v", err)
+			return
+		}
+		s.githubToken = rawToken
+		s.githubTokenSource = "keychain"
+		s.githubTokenNote = "已通过 Keychain 解锁 Token（支持 Touch ID）"
+		return
+	case trimmed == keychainDeleteTokenMark:
+		if err := deleteTokenFromKeychain(); err != nil {
+			s.githubTokenNote = fmt.Sprintf("清除 Keychain token 失败: %v", err)
+			return
+		}
+		s.githubToken = ""
+		s.githubTokenSource = ""
+		s.githubTokenNote = "已清除 Keychain token"
+		return
+	}
+
+	s.githubToken = trimmed
+	if trimmed == "" {
+		s.githubTokenSource = ""
+		s.githubTokenNote = "已清除当前会话 Token"
+		return
+	}
+	s.githubTokenSource = "session"
+	s.githubTokenNote = "GitHub Token 已更新（当前会话）"
 }
 
 func (s *FastgitService) GetGitHubAuthStatus() GitHubAuthStatus {
 	token, source := s.githubTokenValue()
 	if token == "" {
+		message := "未配置 GitHub Token"
+		if note := strings.TrimSpace(s.githubTokenNote); note != "" {
+			message = note
+		}
 		return GitHubAuthStatus{
 			Configured: false,
 			Source:     "none",
-			Message:    "未配置 GitHub Token",
+			Message:    message,
 		}
 	}
 
@@ -161,13 +231,50 @@ func (s *FastgitService) GetGitHubAuthStatus() GitHubAuthStatus {
 	}
 
 	label := "环境变量"
-	if source == "session" {
+	switch source {
+	case "session":
 		label = "当前会话"
+	case "keychain":
+		label = "Keychain"
+	}
+	if note := strings.TrimSpace(s.githubTokenNote); note != "" && source != "env" {
+		label = fmt.Sprintf("%s，%s", label, note)
 	}
 	return GitHubAuthStatus{
 		Configured: true,
 		Source:     source,
 		Message:    fmt.Sprintf("GitHub 已连接: %s/%s (%s)", owner, repoName, label),
+	}
+}
+
+func (s *FastgitService) GetGitHubKeychainStatus() GitHubKeychainStatus {
+	if runtime.GOOS != "darwin" {
+		return GitHubKeychainStatus{
+			Supported: false,
+			HasToken:  false,
+			Message:   "当前系统不支持 macOS Keychain",
+		}
+	}
+
+	hasToken, err := keychainTokenExists()
+	if err != nil {
+		return GitHubKeychainStatus{
+			Supported: true,
+			HasToken:  false,
+			Message:   fmt.Sprintf("Keychain 状态检查失败: %v", err),
+		}
+	}
+	if hasToken {
+		return GitHubKeychainStatus{
+			Supported: true,
+			HasToken:  true,
+			Message:   "Keychain 中已保存 GitHub Token",
+		}
+	}
+	return GitHubKeychainStatus{
+		Supported: true,
+		HasToken:  false,
+		Message:   "Keychain 中未发现 GitHub Token，请先保存",
 	}
 }
 
@@ -2577,7 +2684,11 @@ func existingFiles(paths []string) ([]string, error) {
 
 func (s *FastgitService) githubTokenValue() (token string, source string) {
 	if value := strings.TrimSpace(s.githubToken); value != "" {
-		return value, "session"
+		src := strings.TrimSpace(s.githubTokenSource)
+		if src == "" {
+			src = "session"
+		}
+		return value, src
 	}
 	if value := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); value != "" {
 		return value, "env"
@@ -2586,4 +2697,83 @@ func (s *FastgitService) githubTokenValue() (token string, source string) {
 		return value, "env"
 	}
 	return "", "none"
+}
+
+func saveTokenToKeychain(token string) error {
+	if strings.TrimSpace(token) == "" {
+		return errors.New("token is empty")
+	}
+	_, err := runSecurityCommand(
+		"add-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+		"-w", token,
+		"-U",
+	)
+	return err
+}
+
+func loadTokenFromKeychain() (string, error) {
+	out, err := runSecurityCommand(
+		"find-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+		"-w",
+	)
+	if err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(out)
+	if token == "" {
+		return "", errors.New("keychain token is empty")
+	}
+	return token, nil
+}
+
+func deleteTokenFromKeychain() error {
+	_, err := runSecurityCommand(
+		"delete-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+	)
+	if err == nil {
+		return nil
+	}
+	// security returns non-zero when the item does not exist.
+	if strings.Contains(strings.ToLower(err.Error()), "could not be found") {
+		return nil
+	}
+	return err
+}
+
+func keychainTokenExists() (bool, error) {
+	_, err := runSecurityCommand(
+		"find-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+	)
+	if err == nil {
+		return true, nil
+	}
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "could not be found") || strings.Contains(lower, "item not found") {
+		return false, nil
+	}
+	return false, err
+}
+
+func runSecurityCommand(args ...string) (string, error) {
+	if runtime.GOOS != "darwin" {
+		return "", errors.New("macOS Keychain is only available on darwin")
+	}
+	cmd := exec.Command("security", args...)
+	out, err := cmd.CombinedOutput()
+	text := strings.TrimSpace(string(out))
+	if err != nil {
+		if text == "" {
+			return "", err
+		}
+		return "", errors.New(text)
+	}
+	return text, nil
 }

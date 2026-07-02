@@ -17,6 +17,7 @@ export interface AppContextValue {
   setModulePaneCollapsed(collapsed: boolean): void;
   refresh(preferredRepoPath?: string): Promise<void>;
   refreshGitHubAuthStatus(): Promise<void>;
+  refreshGitHubKeychainStatus(): Promise<void>;
   addRepo(path: string): Promise<void>;
   switchRepo(path: string): Promise<void>;
   removeRepo(path: string): Promise<void>;
