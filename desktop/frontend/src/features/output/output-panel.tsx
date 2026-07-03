@@ -557,6 +557,7 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
         { label: "刷新列表", actionId: "remote_list", values: {}, variant: "ghost" },
         { label: "抓取全部", actionId: "remote_fetch_all", values: {}, variant: "ghost" },
         { label: "添加 Remote", actionId: "remote_add", values: {}, variant: "primary" },
+        { label: "转推到外部平台", actionId: "remote_relay_push", values: {}, variant: "primary" },
         ...(item
           ? [
               { label: "抓取 Remote", actionId: "remote_fetch", values: { name: item.value ?? item.primary }, variant: "ghost" as const },

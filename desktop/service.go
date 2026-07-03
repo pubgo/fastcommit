@@ -297,7 +297,7 @@ func (s *FastgitService) GetModules() []DesktopModule {
 		{
 			ID:          "remote",
 			Title:       "Remote 管理",
-			Description: "列出 / 添加 / 编辑 / rename / 删除 / 抓取",
+			Description: "列出 / 添加 / 编辑 / rename / 删除 / 抓取 / 转推",
 			Actions: []ModuleAction{
 				{ID: "remote_list", Title: "列出 remote", Description: "显示当前仓库所有 remote"},
 				{ID: "remote_add", Title: "添加 remote", Description: "新增一个 remote", Fields: []ActionField{
@@ -321,6 +321,11 @@ func (s *FastgitService) GetModules() []DesktopModule {
 					{Key: "name", Label: "名称", Placeholder: "origin", Required: true},
 				}},
 				{ID: "remote_fetch_all", Title: "抓取全部 remote", Description: "抓取所有 remote 并 prune"},
+				{ID: "remote_relay_push", Title: "转推到外部平台", Description: "将当前仓库推送到其他平台（如 Gitea）", Fields: []ActionField{
+					{Key: "name", Label: "目标 remote 名称", Placeholder: "gitea", Required: true, Default: "gitea"},
+					{Key: "url", Label: "目标仓库 URL", Placeholder: "git@gitea.example.com:owner/repo.git", Required: true},
+					{Key: "mode", Label: "推送模式", Placeholder: "all|current", Required: true, Default: "all"},
+				}},
 			},
 		},
 		{
@@ -546,6 +551,17 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 		return s.remoteFetch(ctx, name)
 	case "remote_fetch_all":
 		return s.remoteFetchAll(ctx)
+	case "remote_relay_push":
+		name, err := requiredValue(values, "name", "目标 remote 名称")
+		if err != nil {
+			return "", err
+		}
+		url, err := requiredValue(values, "url", "目标仓库 URL")
+		if err != nil {
+			return "", err
+		}
+		mode := optionalValue(values, "mode", "all")
+		return s.remoteRelayPush(ctx, name, url, mode)
 	case "branch_list":
 		return s.branchList(ctx)
 	case "branch_create":
@@ -1371,6 +1387,64 @@ func (s *FastgitService) remoteFetchAll(ctx context.Context) (string, error) {
 		results = append(results, out)
 	}
 	return strings.Join(results, "\n"), nil
+}
+
+func (s *FastgitService) remoteRelayPush(ctx context.Context, name, url, mode string) (string, error) {
+	repo, err := s.openRepo()
+	if err != nil {
+		return "", err
+	}
+
+	name = strings.TrimSpace(name)
+	url = strings.TrimSpace(url)
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode == "" {
+		mode = "all"
+	}
+	if mode != "all" && mode != "current" {
+		return "", fmt.Errorf("推送模式不支持: %s（可选 all|current）", mode)
+	}
+
+	if _, err := repo.Remote(name); err != nil {
+		if _, addErr := s.remoteAdd(ctx, name, url, ""); addErr != nil {
+			return "", addErr
+		}
+	} else {
+		if _, updateErr := s.remoteUpdate(ctx, name, url, ""); updateErr != nil {
+			return "", updateErr
+		}
+	}
+
+	if mode == "current" {
+		out, err := s.repoPush(ctx, name)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("目标平台 remote: %s\nURL: %s\n模式: current\n%s", name, url, strings.TrimSpace(out)), nil
+	}
+
+	branchesOut, err := s.gitInRepo(ctx, "push", name, "--all")
+	if err != nil {
+		return "", err
+	}
+	tagsOut, err := s.gitInRepo(ctx, "push", name, "--tags")
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "目标平台 remote: %s\nURL: %s\n模式: all\n", name, url)
+	if strings.TrimSpace(branchesOut) != "" {
+		fmt.Fprintf(&b, "branches:\n%s\n", strings.TrimSpace(branchesOut))
+	} else {
+		b.WriteString("branches: push completed\n")
+	}
+	if strings.TrimSpace(tagsOut) != "" {
+		fmt.Fprintf(&b, "tags:\n%s", strings.TrimSpace(tagsOut))
+	} else {
+		b.WriteString("tags: push completed")
+	}
+	return strings.TrimSpace(b.String()), nil
 }
 
 func (s *FastgitService) branchList(ctx context.Context) (string, error) {
