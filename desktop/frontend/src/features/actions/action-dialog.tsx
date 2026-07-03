@@ -36,6 +36,7 @@ export function ActionDialog({
   onSubmit,
 }: ActionDialogProps) {
   const isForceSyncAction = action.id.endsWith("_force_sync");
+  const isConflictResolveAction = action.id === "conflict_resolve";
   const isDeleteAction = action.id.endsWith("_delete") || action.id.endsWith("_remove") || action.id.endsWith("_close") || action.id.endsWith("_discard");
   const forceSyncHint =
     action.id === "tag_force_sync"
@@ -49,6 +50,7 @@ export function ActionDialog({
       : action.id === "repo_discard_path"
         ? "会丢弃该文件本地改动；如果是未跟踪文件会直接删除。"
       : "该操作不可恢复，请确认当前选中资源正确。";
+  const conflictResolveHint = "会直接覆盖当前冲突文件内容（ours/theirs），如有需要请先备份当前文件。";
   const missingRequired = hasMissingRequiredField(action, values);
 
   return (
@@ -68,6 +70,7 @@ export function ActionDialog({
       <div className="action-dialog__body">
         <Typography.Paragraph className="action-dialog__description">{action.description}</Typography.Paragraph>
         {isForceSyncAction ? <Alert type="warning" showIcon message="危险操作" description={forceSyncHint} /> : null}
+        {isConflictResolveAction ? <Alert type="warning" showIcon message="冲突覆盖确认" description={conflictResolveHint} /> : null}
         {isDeleteAction ? <Alert type="warning" showIcon message="删除确认" description={deleteHint} /> : null}
         <div className="action-dialog__fields">
           {(action.fields ?? []).map((field) => {

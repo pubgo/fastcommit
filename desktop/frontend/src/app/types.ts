@@ -55,6 +55,7 @@ export interface OperationOutput {
 export interface ResourceCatalog {
   remotes: OutputListItem[];
   branches: OutputListItem[];
+  conflicts: OutputListItem[];
   issues: OutputListItem[];
   tags: OutputListItem[];
   worktrees: OutputListItem[];

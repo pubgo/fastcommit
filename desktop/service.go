@@ -26,6 +26,7 @@ import (
 	gitsshknownhosts "github.com/go-git/go-git/v6/plumbing/transport/ssh/knownhosts"
 	"github.com/google/go-github/v71/github"
 	"github.com/kevinburke/ssh_config"
+	"github.com/pubgo/fastgit/pkg/gitconflict"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 )
@@ -399,6 +400,25 @@ func (s *FastgitService) GetModules() []DesktopModule {
 			},
 		},
 		{
+			ID:          "conflict",
+			Title:       "冲突管理",
+			Description: "列出 / 摘要 / 打开 / 选择保留版本 / 标记已解决",
+			Actions: []ModuleAction{
+				{ID: "conflict_list", Title: "列出冲突文件", Description: "列出当前仓库所有冲突文件"},
+				{ID: "conflict_summary", Title: "冲突摘要", Description: "按模块分组展示冲突摘要和建议"},
+				{ID: "conflict_open", Title: "打开冲突文件", Description: "在系统默认编辑器中打开冲突文件（留空为全部）", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "留空表示打开全部冲突文件"},
+				}},
+				{ID: "conflict_resolve", Title: "保留 ours/theirs", Description: "对指定冲突文件选择 ours 或 theirs 版本", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "cmds/pullcmd/cmd.go", Required: true},
+					{Key: "strategy", Label: "策略", Placeholder: "ours|theirs", Required: true, Default: "ours"},
+				}},
+				{ID: "conflict_mark_resolved", Title: "标记已解决", Description: "将冲突文件加入暂存区（git add）", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "cmds/pullcmd/cmd.go", Required: true},
+				}},
+			},
+		},
+		{
 			ID:          "log",
 			Title:       "Commit Log",
 			Description: "查询提交历史 / 查看提交详情",
@@ -715,6 +735,25 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 			return "", err
 		}
 		return s.tagForceSync(ctx, remoteName, name)
+	case "conflict_list":
+		return s.conflictList(ctx)
+	case "conflict_summary":
+		return s.conflictSummary(ctx)
+	case "conflict_open":
+		return s.conflictOpen(ctx, optionalValue(values, "path", ""))
+	case "conflict_resolve":
+		path, err := requiredValue(values, "path", "文件路径")
+		if err != nil {
+			return "", err
+		}
+		strategy := optionalValue(values, "strategy", "ours")
+		return s.conflictResolve(ctx, path, strategy)
+	case "conflict_mark_resolved":
+		path, err := requiredValue(values, "path", "文件路径")
+		if err != nil {
+			return "", err
+		}
+		return s.conflictMarkResolved(ctx, path)
 	case "log_list":
 		ref := optionalValue(values, "ref", "HEAD")
 		author := optionalValue(values, "author", "")
@@ -1855,6 +1894,161 @@ func (s *FastgitService) logList(ctx context.Context, ref, author, keyword strin
 		return "no commits", nil
 	}
 	return trimmed, nil
+}
+
+func (s *FastgitService) conflictList(ctx context.Context) (string, error) {
+	snap, err := gitconflict.BuildSnapshot(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	if len(snap.Files) == 0 {
+		return "no conflicts", nil
+	}
+	var b strings.Builder
+	for _, file := range snap.Files {
+		fmt.Fprintf(&b, "%s\t%s\t%s\n", file.Path, file.Module, file.Reason)
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
+func (s *FastgitService) conflictSummary(ctx context.Context) (string, error) {
+	snap, err := gitconflict.BuildSnapshot(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(snap.Summary), nil
+}
+
+func (s *FastgitService) conflictOpen(ctx context.Context, path string) (string, error) {
+	targets, err := s.conflictTargetPaths(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	if len(targets) == 0 {
+		return "no conflicts to open", nil
+	}
+	opened := make([]string, 0, len(targets))
+	for _, target := range targets {
+		fullPath := filepath.Join(s.repoRoot, filepath.FromSlash(target))
+		if err := s.openFileWithSystemEditor(ctx, fullPath); err != nil {
+			return strings.Join(opened, "\n"), fmt.Errorf("open %s: %w", target, err)
+		}
+		opened = append(opened, fmt.Sprintf("opened: %s", target))
+	}
+	return strings.Join(opened, "\n"), nil
+}
+
+func (s *FastgitService) conflictResolve(ctx context.Context, path, strategy string) (string, error) {
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	strategy = strings.ToLower(strings.TrimSpace(strategy))
+	flag := "--ours"
+	switch strategy {
+	case "ours":
+		flag = "--ours"
+	case "theirs":
+		flag = "--theirs"
+	default:
+		return "", fmt.Errorf("strategy 不支持: %s（可选 ours|theirs）", strategy)
+	}
+	if _, err := s.gitInRepo(ctx, "checkout", flag, "--", target); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("resolved via %s: %s\nnext: 执行“标记已解决”完成 git add", strategy, target), nil
+}
+
+func (s *FastgitService) conflictMarkResolved(ctx context.Context, path string) (string, error) {
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.gitInRepo(ctx, "add", "--", target); err != nil {
+		return "", err
+	}
+	remaining, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return fmt.Sprintf("marked resolved: %s", target), nil
+	}
+	if len(remaining) == 0 {
+		return fmt.Sprintf("marked resolved: %s\nall conflicts resolved", target), nil
+	}
+	return fmt.Sprintf("marked resolved: %s\nremaining conflicts: %d", target, len(remaining)), nil
+}
+
+func (s *FastgitService) conflictTargetPaths(ctx context.Context, path string) ([]string, error) {
+	conflicts, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(path) == "" {
+		return conflicts, nil
+	}
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	return []string{target}, nil
+}
+
+func (s *FastgitService) resolveConflictPath(ctx context.Context, path string) (string, error) {
+	target, err := normalizeRepoRelativePath(path)
+	if err != nil {
+		return "", err
+	}
+	conflicts, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	if len(conflicts) == 0 {
+		return "", errors.New("no conflicts")
+	}
+	normalizedTarget := filepath.ToSlash(filepath.Clean(filepath.FromSlash(target)))
+	for _, candidate := range conflicts {
+		normalizedCandidate := filepath.ToSlash(filepath.Clean(filepath.FromSlash(candidate)))
+		if normalizedCandidate == normalizedTarget {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("冲突文件不存在: %s", target)
+}
+
+func (s *FastgitService) openFileWithSystemEditor(ctx context.Context, fullPath string) error {
+	if editor := strings.TrimSpace(os.Getenv("EDITOR")); editor != "" {
+		parts := strings.Fields(editor)
+		if len(parts) > 0 {
+			cmd := exec.CommandContext(ctx, parts[0], append(parts[1:], fullPath)...)
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+			_ = cmd.Process.Release()
+			return nil
+		}
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		cmd := exec.CommandContext(ctx, "open", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	case "windows":
+		cmd := exec.CommandContext(ctx, "cmd", "/c", "start", "", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	default:
+		cmd := exec.CommandContext(ctx, "xdg-open", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	}
 }
 
 func (s *FastgitService) logView(ctx context.Context, hash string) (string, error) {

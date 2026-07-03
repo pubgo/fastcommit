@@ -36,6 +36,12 @@ export function resolveActionFieldOptions(moduleID: string, actionID: string, fi
       { label: "rebase", value: "rebase" },
     ];
   }
+  if (fieldKey === "strategy") {
+    return [
+      { label: "ours（保留当前分支）", value: "ours" },
+      { label: "theirs（保留对端版本）", value: "theirs" },
+    ];
+  }
 
   if (fieldKey === "remote") {
     return toOptions(catalog.remotes);
@@ -97,6 +103,9 @@ export function resolveActionFieldOptions(moduleID: string, actionID: string, fi
 
   if (moduleID === "pr" && (actionID === "pr_view" || actionID === "pr_close") && fieldKey === "id") {
     return toOptions(catalog.prs);
+  }
+  if (moduleID === "conflict" && (actionID === "conflict_open" || actionID === "conflict_resolve" || actionID === "conflict_mark_resolved") && fieldKey === "path") {
+    return toOptions(catalog.conflicts);
   }
 
   return [];

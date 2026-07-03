@@ -38,6 +38,7 @@ function createEmptyCatalog(): ResourceCatalog {
   return {
     remotes: [],
     branches: [],
+    conflicts: [],
     issues: [],
     tags: [],
     worktrees: [],
@@ -175,6 +176,38 @@ function parseTagItems(body: string): OutputListItem[] {
         tag,
       },
     }));
+}
+
+function parseConflictItems(body: string): OutputListItem[] {
+  return body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line, index) => {
+      const parts = line.split("\t");
+      if (parts.length < 3) {
+        return [];
+      }
+      const [path, module, ...reasonParts] = parts;
+      const reason = reasonParts.join("\t").trim();
+      return [
+        {
+          id: `conflict-${index}`,
+          primary: path,
+          secondary: `${module} · ${reason}`,
+          badge: "conflict",
+          category: "conflict",
+          value: path,
+          keywords: [path, module, reason, "conflict"].filter(Boolean),
+          fields: {
+            path,
+            module,
+            reason,
+            status: "conflict",
+          },
+        },
+      ];
+    });
 }
 
 function parseLogItems(body: string): OutputListItem[] {
@@ -506,6 +539,18 @@ function parseLogDetail(body: string): OutputDetail | null {
   };
 }
 
+function parseConflictSummaryDetail(body: string): OutputDetail | null {
+  const normalized = body.trim();
+  if (!normalized) {
+    return null;
+  }
+  return {
+    primary: "冲突摘要",
+    badge: normalized.startsWith("No merge conflicts") ? "clean" : "conflict",
+    body: normalized,
+  };
+}
+
 function repoStatusCategory(staging: string, worktree: string): string {
   if (staging === "U" || worktree === "U") {
     return "conflict";
@@ -632,6 +677,8 @@ function updateCatalog(catalog: ResourceCatalog, actionID: string, items?: Outpu
       return { ...catalog, remotes: items };
     case "branch_list":
       return { ...catalog, branches: items };
+    case "conflict_list":
+      return { ...catalog, conflicts: items };
     case "issue_list":
       return { ...catalog, issues: items };
     case "tag_list":
@@ -695,12 +742,21 @@ function relatedCatalogRefreshes(moduleId: string, actionId: string): Array<{ mo
     case "tag_push":
     case "tag_force_sync":
       return [{ moduleId: "tag", actionId: "tag_list" }];
+    case "conflict_resolve":
+    case "conflict_mark_resolved":
+      return [
+        { moduleId: "conflict", actionId: "conflict_list" },
+        { moduleId: "repo", actionId: "repo_status" },
+      ];
     case "repo_pull":
     case "repo_push":
     case "repo_stage_path":
     case "repo_unstage_path":
     case "repo_discard_path":
-      return [{ moduleId: "repo", actionId: "repo_status" }];
+      return [
+        { moduleId: "repo", actionId: "repo_status" },
+        { moduleId: "conflict", actionId: "conflict_list" },
+      ];
     case "pr_create":
     case "pr_sync":
     case "pr_merge":
@@ -725,6 +781,13 @@ function toStructuredOutput(actionID: string, body: string, repoPath: string): P
     case "tag_list": {
       const items = parseTagItems(normalized);
       return { items, emptyHint: normalized === "no tags" ? "暂无标签" : items.length === 0 ? "暂无标签" : undefined };
+    }
+    case "conflict_list": {
+      const items = parseConflictItems(normalized);
+      return {
+        items,
+        emptyHint: normalized === "no conflicts" ? "暂无冲突" : items.length === 0 ? "暂无冲突" : undefined,
+      };
     }
     case "worktree_list": {
       const items = parseWorktreeItems(normalized, repoPath);
@@ -772,6 +835,10 @@ function toStructuredOutput(actionID: string, body: string, repoPath: string): P
     case "log_view":
       return {
         detail: parseLogDetail(normalized) ?? undefined,
+      };
+    case "conflict_summary":
+      return {
+        detail: parseConflictSummaryDetail(normalized) ?? undefined,
       };
     case "issue_view":
     case "pr_view":
