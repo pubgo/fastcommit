@@ -51,7 +51,7 @@ function parseRemoteItems(body: string): OutputListItem[] {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .flatMap((line, index) => {
+    .flatMap((line) => {
       const parts = line.split("\t");
       if (parts.length < 5) {
         return [];
@@ -175,6 +175,39 @@ function parseTagItems(body: string): OutputListItem[] {
         tag,
       },
     }));
+}
+
+function parseLogItems(body: string): OutputListItem[] {
+  return body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line, index) => {
+      const parts = line.split("\t");
+      if (parts.length < 5) {
+        return [];
+      }
+      const [hash, short, author, date, ...subjectParts] = parts;
+      const subject = subjectParts.join("\t").trim();
+      return [
+        {
+          id: `log-${hash}`,
+          primary: subject || short,
+          secondary: `${author} · ${date}`,
+          badge: short,
+          category: "commit",
+          value: hash,
+          keywords: [hash, short, author, date, subject].filter(Boolean),
+          fields: {
+            hash,
+            short,
+            author,
+            date,
+            subject,
+          },
+        },
+      ];
+    });
 }
 
 function parseIssueLikeItems(body: string): OutputListItem[] {
@@ -423,6 +456,56 @@ function parseMergeDetail(body: string): OutputDetail | null {
   };
 }
 
+function parseLogDetail(body: string): OutputDetail | null {
+  const lines = body.split(/\r?\n/);
+  const meta = new Map<string, string>();
+  const metaKeys = new Set(["commit", "short", "author", "date", "refs", "subject"]);
+  let idx = 0;
+
+  for (; idx < lines.length; idx += 1) {
+    const line = lines[idx].trim();
+    if (!line) {
+      continue;
+    }
+    const tabIndex = line.indexOf("\t");
+    if (tabIndex <= 0) {
+      break;
+    }
+    const key = line.slice(0, tabIndex);
+    if (!metaKeys.has(key)) {
+      break;
+    }
+    meta.set(key, line.slice(tabIndex + 1).trim());
+  }
+
+  const hash = meta.get("commit") ?? "";
+  const short = meta.get("short") ?? hash.slice(0, 8);
+  const author = meta.get("author") ?? "-";
+  const date = meta.get("date") ?? "-";
+  const refs = meta.get("refs") ?? "";
+  const subject = meta.get("subject") ?? `commit ${short || hash}`;
+  const details = lines.slice(idx).join("\n").trim();
+
+  if (!hash && !details) {
+    return null;
+  }
+
+  return {
+    targetId: hash ? `log-${hash}` : undefined,
+    primary: subject,
+    secondary: short ? `commit ${short}` : undefined,
+    badge: short || undefined,
+    body: details || undefined,
+    fields: [
+      ...(short ? [{ label: "短哈希", value: short }] : []),
+      ...(hash ? [{ label: "完整哈希", value: hash }] : []),
+      { label: "作者", value: author },
+      { label: "时间", value: date },
+      ...(refs ? [{ label: "引用", value: refs }] : []),
+    ],
+  };
+}
+
 function repoStatusCategory(staging: string, worktree: string): string {
   if (staging === "U" || worktree === "U") {
     return "conflict";
@@ -584,6 +667,7 @@ function relatedCatalogRefreshes(moduleId: string, actionId: string): Array<{ mo
     case "remote_remove":
     case "remote_fetch":
     case "remote_fetch_all":
+    case "remote_relay_push":
       return [
         { moduleId: "remote", actionId: "remote_list" },
         { moduleId: "branch", actionId: "branch_list" },
@@ -607,6 +691,7 @@ function relatedCatalogRefreshes(moduleId: string, actionId: string): Array<{ mo
     case "issue_close":
       return [{ moduleId: "issue", actionId: "issue_list" }];
     case "tag_publish":
+    case "tag_delete":
     case "tag_push":
     case "tag_force_sync":
       return [{ moduleId: "tag", actionId: "tag_list" }];
@@ -677,6 +762,17 @@ function toStructuredOutput(actionID: string, body: string, repoPath: string): P
         emptyHint: normalized === "working tree clean" ? "工作区干净" : undefined,
       };
     }
+    case "log_list": {
+      const items = parseLogItems(normalized);
+      return {
+        items,
+        emptyHint: normalized === "no commits" ? "没有匹配的提交" : items.length === 0 ? "没有匹配的提交" : undefined,
+      };
+    }
+    case "log_view":
+      return {
+        detail: parseLogDetail(normalized) ?? undefined,
+      };
     case "issue_view":
     case "pr_view":
       return {

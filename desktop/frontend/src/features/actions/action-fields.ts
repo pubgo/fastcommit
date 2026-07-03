@@ -80,6 +80,17 @@ export function resolveActionFieldOptions(moduleID: string, actionID: string, fi
     return toOptions(catalog.tags);
   }
 
+  if (moduleID === "tag" && actionID === "tag_delete" && fieldKey === "name") {
+    return toOptions(catalog.tags);
+  }
+
+  if (moduleID === "tag" && actionID === "tag_delete" && fieldKey === "delete_remote") {
+    return [
+      { label: "仅删除本地", value: "false" },
+      { label: "同时删除远端", value: "true" },
+    ];
+  }
+
   if (moduleID === "pr" && actionID === "pr_create" && fieldKey === "base") {
     return toOptions(catalog.branches);
   }

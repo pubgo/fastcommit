@@ -385,6 +385,39 @@ function getTableConfig(actionId: string | undefined): {
           },
         ],
       };
+    case "log_list":
+      return {
+        searchPlaceholder: "搜索哈希、作者、日期、提交信息...",
+        filterLabel: "全部提交",
+        columns: [
+          {
+            key: "short",
+            label: "Hash",
+            width: "minmax(120px, 0.8fr)",
+            className: "output-table__cell--status",
+            render: (item) => getField(item, "short", item.badge ?? "-"),
+          },
+          {
+            key: "subject",
+            label: "提交信息",
+            width: "minmax(360px, 2.5fr)",
+            className: "output-table__cell--primary",
+            render: (item) => getField(item, "subject", item.primary),
+          },
+          {
+            key: "author",
+            label: "作者",
+            width: "minmax(180px, 1.1fr)",
+            render: (item) => getField(item, "author"),
+          },
+          {
+            key: "date",
+            label: "时间",
+            width: "minmax(240px, 1.3fr)",
+            render: (item) => getField(item, "date"),
+          },
+        ],
+      };
     default:
       return {
         searchPlaceholder: "搜索名称、状态、分支...",
@@ -455,6 +488,14 @@ function describeSelectedItem(actionId: string | undefined, item: OutputListItem
         { label: "Staging", value: getField(item, "staging", "-").replace(/\s/g, "·") },
         { label: "Worktree", value: getField(item, "worktree", "-").replace(/\s/g, "·") },
       ];
+    case "log_list":
+      return [
+        { label: "短哈希", value: getField(item, "short", item.badge ?? "-") },
+        { label: "完整哈希", value: getField(item, "hash", item.value ?? "-") },
+        { label: "提交信息", value: getField(item, "subject", item.primary) },
+        { label: "作者", value: getField(item, "author") },
+        { label: "时间", value: getField(item, "date") },
+      ];
     case "pr_status":
     case "pr_list":
       return [
@@ -508,6 +549,7 @@ function buildRowActions(actionId: string | undefined, item: OutputListItem, def
       ];
     case "tag_list":
       return [
+        { label: "删除", actionId: "tag_delete", values: { name: item.value ?? item.primary }, tone: "danger" },
         { label: "推送", actionId: "tag_push", values: { name: item.value ?? item.primary, remote: defaultRemote } },
         { label: "对齐远端", actionId: "tag_force_sync", values: { name: item.value ?? item.primary, remote: defaultRemote }, tone: "danger" },
       ];
@@ -545,6 +587,8 @@ function buildRowActions(actionId: string | undefined, item: OutputListItem, def
           tone: "danger",
         },
       ];
+    case "log_list":
+      return [{ label: "查看", actionId: "log_view", values: { hash: getField(item, "hash", item.value ?? item.primary) } }];
     default:
       return [];
   }
@@ -635,6 +679,7 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
         { label: "创建 Tag", actionId: "tag_publish", values: {}, variant: "primary" },
         ...(item
           ? [
+              { label: "删除 Tag", actionId: "tag_delete", values: { name: item.value ?? item.primary }, variant: "ghost" as const, tone: "danger" as const },
               { label: "推送 Tag", actionId: "tag_push", values: { name: item.value ?? item.primary, remote: defaultRemote }, variant: "ghost" as const },
               { label: "强制对齐远端", actionId: "tag_force_sync", values: { name: item.value ?? item.primary, remote: defaultRemote }, variant: "ghost" as const, tone: "danger" as const },
             ]
@@ -653,6 +698,11 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
             ]
           : []),
         { label: "强制对齐当前分支", actionId: "repo_force_sync", values: { remote: defaultRemote }, variant: "ghost", tone: "danger" },
+      ];
+    case "log_list":
+      return [
+        { label: "查询日志", actionId: "log_list", values: {}, variant: "primary" },
+        ...(item ? [{ label: "查看提交详情", actionId: "log_view", values: { hash: getField(item, "hash", item.value ?? item.primary) }, variant: "ghost" as const }] : []),
       ];
     default:
       return [];
@@ -711,6 +761,16 @@ function buildBatchActions(actionId: string | undefined, items: OutputListItem[]
     }
     case "tag_list":
       return [
+        {
+          label: `批量删除 (${items.length})`,
+          actionId: "tag_delete",
+          jobs: items.map((item) => ({
+            label: item.primary,
+            values: { name: item.value ?? item.primary },
+          })),
+          tone: "danger",
+          description: "会删除本地选中的 tag。",
+        },
         {
           label: `批量推送 (${items.length})`,
           actionId: "tag_push",

@@ -44,6 +44,8 @@ export function ActionDialog({
   const deleteHint =
     action.id === "remote_remove"
       ? "会移除当前 remote 配置；依赖它的 tracking/default 配置需要你后续自行调整。"
+      : action.id === "tag_delete"
+        ? "默认只删除本地 tag；可在下方选择“同时删除远端”。"
       : action.id === "repo_discard_path"
         ? "会丢弃该文件本地改动；如果是未跟踪文件会直接删除。"
       : "该操作不可恢复，请确认当前选中资源正确。";

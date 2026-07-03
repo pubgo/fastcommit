@@ -385,12 +385,28 @@ func (s *FastgitService) GetModules() []DesktopModule {
 		{
 			ID:          "tag",
 			Title:       "Tag 管理",
-			Description: "列出 / 创建 / 推送 / 对齐远端",
+			Description: "列出 / 创建 / 删除 / 推送 / 对齐远端",
 			Actions: []ModuleAction{
 				{ID: "tag_list", Title: "列出 tag", Description: "列出本地 tags"},
 				{ID: "tag_publish", Title: "创建 tag", Description: "在当前 HEAD 创建 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}}},
+				{ID: "tag_delete", Title: "删除 tag", Description: "删除本地 tag，可选同步删除远端", Fields: []ActionField{
+					{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true},
+					{Key: "delete_remote", Label: "同时删除远端", Placeholder: "false|true", Default: "false"},
+					{Key: "remote", Label: "Remote", Placeholder: "选择 remote", Default: "origin"},
+				}},
 				{ID: "tag_push", Title: "推送 tag", Description: "推送指定 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}, {Key: "remote", Label: "Remote", Placeholder: "选择 remote", Required: true, Default: "origin"}}},
 				{ID: "tag_force_sync", Title: "强制对齐远端 tag", Description: "强制用指定 remote 上同名 tag 覆盖本地 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}, {Key: "remote", Label: "Remote", Placeholder: "选择 remote", Required: true, Default: "origin"}, {Key: "confirm", Label: "确认文本", Placeholder: "输入 RESET 确认", Required: true}}},
+			},
+		},
+		{
+			ID:          "log",
+			Title:       "Commit Log",
+			Description: "查询提交历史 / 查看提交详情",
+			Actions: []ModuleAction{
+				{ID: "log_list", Title: "查询提交历史", Description: "默认加载最近 50 条提交"},
+				{ID: "log_view", Title: "查看提交详情", Description: "查看指定 commit 的变更明细", Fields: []ActionField{
+					{Key: "hash", Label: "Commit Hash", Placeholder: "abc1234", Required: true},
+				}},
 			},
 		},
 	}
@@ -671,6 +687,14 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 			return "", err
 		}
 		return s.tagPublish(ctx, name)
+	case "tag_delete":
+		name, err := requiredValue(values, "name", "Tag")
+		if err != nil {
+			return "", err
+		}
+		deleteRemote := optionalBoolValue(values, "delete_remote", false)
+		remoteName := optionalValue(values, "remote", "")
+		return s.tagDelete(ctx, name, deleteRemote, remoteName)
 	case "tag_push":
 		name, err := requiredValue(values, "name", "Tag")
 		if err != nil {
@@ -691,6 +715,21 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 			return "", err
 		}
 		return s.tagForceSync(ctx, remoteName, name)
+	case "log_list":
+		ref := optionalValue(values, "ref", "HEAD")
+		author := optionalValue(values, "author", "")
+		keyword := optionalValue(values, "keyword", "")
+		limit, err := optionalIntValue(values, "limit", 50)
+		if err != nil {
+			return "", err
+		}
+		return s.logList(ctx, ref, author, keyword, limit)
+	case "log_view":
+		hash, err := requiredValue(values, "hash", "Commit Hash")
+		if err != nil {
+			return "", err
+		}
+		return s.logView(ctx, hash)
 	default:
 		return "", fmt.Errorf("unsupported action: %s", actionID)
 	}
@@ -710,6 +749,36 @@ func optionalValue(values map[string]string, key, def string) string {
 		return def
 	}
 	return v
+}
+
+func optionalIntValue(values map[string]string, key string, def int) (int, error) {
+	v := strings.TrimSpace(values[key])
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconvAtoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s 不是有效数字", key)
+	}
+	if n <= 0 {
+		return 0, fmt.Errorf("%s 必须大于 0", key)
+	}
+	return n, nil
+}
+
+func optionalBoolValue(values map[string]string, key string, def bool) bool {
+	v := strings.ToLower(strings.TrimSpace(values[key]))
+	if v == "" {
+		return def
+	}
+	switch v {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return def
+	}
 }
 
 func validateForceSyncConfirmation(v string) error {
@@ -1754,6 +1823,64 @@ func (s *FastgitService) gitInRepo(ctx context.Context, args ...string) (string,
 	return string(out), nil
 }
 
+func (s *FastgitService) logList(ctx context.Context, ref, author, keyword string, limit int) (string, error) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		ref = "HEAD"
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
+	args := []string{
+		"log",
+		"--date=iso-strict",
+		fmt.Sprintf("-%d", limit),
+		"--pretty=format:%H\t%h\t%an\t%ad\t%s",
+	}
+	if strings.TrimSpace(author) != "" {
+		args = append(args, "--author="+strings.TrimSpace(author))
+	}
+	if strings.TrimSpace(keyword) != "" {
+		args = append(args, "--grep="+strings.TrimSpace(keyword))
+	}
+	args = append(args, ref)
+
+	out, err := s.gitInRepo(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "no commits", nil
+	}
+	return trimmed, nil
+}
+
+func (s *FastgitService) logView(ctx context.Context, hash string) (string, error) {
+	hash = strings.TrimSpace(hash)
+	if hash == "" {
+		return "", errors.New("Commit Hash 不能为空")
+	}
+
+	out, err := s.gitInRepo(
+		ctx,
+		"show",
+		"--date=iso-strict",
+		"--name-status",
+		"--pretty=format:commit\t%H%nshort\t%h%nauthor\t%an <%ae>%ndate\t%ad%nrefs\t%D%nsubject\t%s%n%n%b",
+		hash,
+	)
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "", fmt.Errorf("未找到提交: %s", hash)
+	}
+	return trimmed, nil
+}
+
 func (s *FastgitService) issueList(ctx context.Context) (string, error) {
 	owner, repoName, client, err := s.githubClient(ctx)
 	if err != nil {
@@ -2046,6 +2173,56 @@ func (s *FastgitService) tagPublish(ctx context.Context, name string) (string, e
 		return "", err
 	}
 	return fmt.Sprintf("tag created: %s", name), nil
+}
+
+func (s *FastgitService) tagDelete(ctx context.Context, name string, deleteRemote bool, remoteName string) (string, error) {
+	out, err := s.gitInRepo(ctx, "tag", "-d", name)
+	if err != nil {
+		return "", err
+	}
+	localOut := strings.TrimSpace(out)
+	if localOut == "" {
+		localOut = fmt.Sprintf("tag deleted: %s", name)
+	}
+
+	if !deleteRemote {
+		return localOut, nil
+	}
+
+	repo, err := s.openRepo()
+	if err != nil {
+		return "", err
+	}
+	remoteName, err = s.resolveRemoteName(repo, remoteName, "")
+	if err != nil {
+		return "", err
+	}
+
+	if isSSHRemote(repo, remoteName) {
+		remoteOut, remoteErr := s.gitInRepo(ctx, "push", remoteName, fmt.Sprintf(":refs/tags/%s", name))
+		if remoteErr != nil {
+			return "", remoteErr
+		}
+		trimmed := strings.TrimSpace(remoteOut)
+		if trimmed == "" {
+			trimmed = fmt.Sprintf("remote tag deleted: %s/%s", remoteName, name)
+		}
+		return fmt.Sprintf("%s\n%s", localOut, trimmed), nil
+	}
+
+	clientOptions, err := s.clientOptionsForRemote(repo, remoteName)
+	if err != nil {
+		return "", err
+	}
+	refSpec := gitconfig.RefSpec(fmt.Sprintf(":refs/tags/%s", name))
+	if err := repo.PushContext(ctx, &git.PushOptions{
+		RemoteName:    remoteName,
+		RefSpecs:      []gitconfig.RefSpec{refSpec},
+		ClientOptions: clientOptions,
+	}); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s\nremote tag deleted: %s/%s", localOut, remoteName, name), nil
 }
 
 func (s *FastgitService) tagPush(ctx context.Context, remoteName, name string) (string, error) {
