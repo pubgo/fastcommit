@@ -152,6 +152,14 @@ export function ModuleActions() {
           jobs.push({ moduleId: "remote", actionId: "remote_list" });
         }
         break;
+      case "conflict":
+        if (state.catalog.conflicts.length === 0) {
+          jobs.push({ moduleId: "conflict", actionId: "conflict_list" });
+        }
+        if (state.catalog.repoStatus.length === 0) {
+          jobs.push({ moduleId: "repo", actionId: "repo_status" });
+        }
+        break;
       case "pr":
         if (state.catalog.prs.length === 0) {
           jobs.push({ moduleId: "pr", actionId: "pr_list" });
@@ -171,6 +179,7 @@ export function ModuleActions() {
     prefetchAction,
     selectedModule,
     state.catalog.branches.length,
+    state.catalog.conflicts.length,
     state.catalog.issues.length,
     state.catalog.prs.length,
     state.catalog.remotes.length,

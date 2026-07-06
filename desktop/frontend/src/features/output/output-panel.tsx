@@ -1,17 +1,13 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Checkbox, Input as AntInput, Modal, Segmented, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 
 import { useAppContext } from "../../app/providers/app-context";
 import type { ModuleAction, OutputListItem } from "../../app/types";
 import { Button } from "../../components/ui/button";
+import { ActionDialog } from "../actions/action-dialog";
 import { buildActionValues } from "../actions/action-fields";
 import { isViewAction } from "../actions/action-meta";
-
-const ActionDialog = lazy(async () => {
-  const module = await import("../actions/action-dialog");
-  return { default: module.ActionDialog };
-});
 
 type SortMode = "default" | "name-asc" | "name-desc" | "active-first" | "number-desc" | "number-asc" | "status";
 type ViewMode = "list" | "detail" | "raw";
@@ -81,7 +77,7 @@ function editablePushURL(item: OutputListItem): string {
 }
 
 function isBatchSelectableAction(actionId: string | undefined): boolean {
-  return actionId === "remote_list" || actionId === "branch_list" || actionId === "tag_list" || actionId === "worktree_list" || actionId === "issue_list" || actionId === "pr_list" || actionId === "repo_status";
+  return actionId === "remote_list" || actionId === "branch_list" || actionId === "tag_list" || actionId === "worktree_list" || actionId === "issue_list" || actionId === "pr_list" || actionId === "repo_status" || actionId === "conflict_list";
 }
 
 function formatFilterValue(actionId: string | undefined, value: string): string {
@@ -385,6 +381,65 @@ function getTableConfig(actionId: string | undefined): {
           },
         ],
       };
+    case "conflict_list":
+      return {
+        searchPlaceholder: "搜索冲突文件、模块或建议...",
+        filterLabel: "全部冲突",
+        columns: [
+          {
+            key: "path",
+            label: "冲突文件",
+            width: "minmax(320px, 2fr)",
+            className: "output-table__cell--primary",
+            render: (item) => getField(item, "path", item.primary),
+          },
+          {
+            key: "module",
+            label: "模块",
+            width: "minmax(160px, 0.8fr)",
+            render: (item) => getField(item, "module", "-"),
+          },
+          {
+            key: "reason",
+            label: "处理建议",
+            width: "minmax(360px, 2.3fr)",
+            render: (item) => getField(item, "reason", "-"),
+          },
+        ],
+      };
+    case "log_list":
+      return {
+        searchPlaceholder: "搜索哈希、作者、日期、提交信息...",
+        filterLabel: "全部提交",
+        columns: [
+          {
+            key: "short",
+            label: "Hash",
+            width: "minmax(120px, 0.8fr)",
+            className: "output-table__cell--status",
+            render: (item) => getField(item, "short", item.badge ?? "-"),
+          },
+          {
+            key: "subject",
+            label: "提交信息",
+            width: "minmax(360px, 2.5fr)",
+            className: "output-table__cell--primary",
+            render: (item) => getField(item, "subject", item.primary),
+          },
+          {
+            key: "author",
+            label: "作者",
+            width: "minmax(180px, 1.1fr)",
+            render: (item) => getField(item, "author"),
+          },
+          {
+            key: "date",
+            label: "时间",
+            width: "minmax(240px, 1.3fr)",
+            render: (item) => getField(item, "date"),
+          },
+        ],
+      };
     default:
       return {
         searchPlaceholder: "搜索名称、状态、分支...",
@@ -455,6 +510,21 @@ function describeSelectedItem(actionId: string | undefined, item: OutputListItem
         { label: "Staging", value: getField(item, "staging", "-").replace(/\s/g, "·") },
         { label: "Worktree", value: getField(item, "worktree", "-").replace(/\s/g, "·") },
       ];
+    case "conflict_list":
+      return [
+        { label: "冲突文件", value: getField(item, "path", item.primary) },
+        { label: "模块", value: getField(item, "module", "-") },
+        { label: "建议", value: getField(item, "reason", "-") },
+        { label: "状态", value: "待解决" },
+      ];
+    case "log_list":
+      return [
+        { label: "短哈希", value: getField(item, "short", item.badge ?? "-") },
+        { label: "完整哈希", value: getField(item, "hash", item.value ?? "-") },
+        { label: "提交信息", value: getField(item, "subject", item.primary) },
+        { label: "作者", value: getField(item, "author") },
+        { label: "时间", value: getField(item, "date") },
+      ];
     case "pr_status":
     case "pr_list":
       return [
@@ -508,6 +578,7 @@ function buildRowActions(actionId: string | undefined, item: OutputListItem, def
       ];
     case "tag_list":
       return [
+        { label: "删除", actionId: "tag_delete", values: { name: item.value ?? item.primary }, tone: "danger" },
         { label: "推送", actionId: "tag_push", values: { name: item.value ?? item.primary, remote: defaultRemote } },
         { label: "对齐远端", actionId: "tag_force_sync", values: { name: item.value ?? item.primary, remote: defaultRemote }, tone: "danger" },
       ];
@@ -545,6 +616,15 @@ function buildRowActions(actionId: string | undefined, item: OutputListItem, def
           tone: "danger",
         },
       ];
+    case "conflict_list":
+      return [
+        { label: "打开", actionId: "conflict_open", values: { path: getField(item, "path", item.value ?? item.primary) } },
+        { label: "保留 ours", actionId: "conflict_resolve", values: { path: getField(item, "path", item.value ?? item.primary), strategy: "ours" }, tone: "danger" },
+        { label: "保留 theirs", actionId: "conflict_resolve", values: { path: getField(item, "path", item.value ?? item.primary), strategy: "theirs" }, tone: "danger" },
+        { label: "标记已解决", actionId: "conflict_mark_resolved", values: { path: getField(item, "path", item.value ?? item.primary) } },
+      ];
+    case "log_list":
+      return [{ label: "查看", actionId: "log_view", values: { hash: getField(item, "hash", item.value ?? item.primary) } }];
     default:
       return [];
   }
@@ -557,6 +637,7 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
         { label: "刷新列表", actionId: "remote_list", values: {}, variant: "ghost" },
         { label: "抓取全部", actionId: "remote_fetch_all", values: {}, variant: "ghost" },
         { label: "添加 Remote", actionId: "remote_add", values: {}, variant: "primary" },
+        { label: "转推到外部平台", actionId: "remote_relay_push", values: {}, variant: "primary" },
         ...(item
           ? [
               { label: "抓取 Remote", actionId: "remote_fetch", values: { name: item.value ?? item.primary }, variant: "ghost" as const },
@@ -634,6 +715,7 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
         { label: "创建 Tag", actionId: "tag_publish", values: {}, variant: "primary" },
         ...(item
           ? [
+              { label: "删除 Tag", actionId: "tag_delete", values: { name: item.value ?? item.primary }, variant: "ghost" as const, tone: "danger" as const },
               { label: "推送 Tag", actionId: "tag_push", values: { name: item.value ?? item.primary, remote: defaultRemote }, variant: "ghost" as const },
               { label: "强制对齐远端", actionId: "tag_force_sync", values: { name: item.value ?? item.primary, remote: defaultRemote }, variant: "ghost" as const, tone: "danger" as const },
             ]
@@ -652,6 +734,25 @@ function buildToolbarActions(actionId: string | undefined, item: OutputListItem 
             ]
           : []),
         { label: "强制对齐当前分支", actionId: "repo_force_sync", values: { remote: defaultRemote }, variant: "ghost", tone: "danger" },
+      ];
+    case "conflict_list":
+      return [
+        { label: "刷新列表", actionId: "conflict_list", values: {}, variant: "ghost" },
+        { label: "冲突摘要", actionId: "conflict_summary", values: {}, variant: "primary" },
+        { label: "打开全部冲突", actionId: "conflict_open", values: {}, variant: "ghost" },
+        ...(item
+          ? [
+              { label: "打开当前文件", actionId: "conflict_open", values: { path: getField(item, "path", item.value ?? item.primary) }, variant: "ghost" as const },
+              { label: "保留 ours", actionId: "conflict_resolve", values: { path: getField(item, "path", item.value ?? item.primary), strategy: "ours" }, variant: "ghost" as const, tone: "danger" as const },
+              { label: "保留 theirs", actionId: "conflict_resolve", values: { path: getField(item, "path", item.value ?? item.primary), strategy: "theirs" }, variant: "ghost" as const, tone: "danger" as const },
+              { label: "标记已解决", actionId: "conflict_mark_resolved", values: { path: getField(item, "path", item.value ?? item.primary) }, variant: "ghost" as const },
+            ]
+          : []),
+      ];
+    case "log_list":
+      return [
+        { label: "查询日志", actionId: "log_list", values: {}, variant: "primary" },
+        ...(item ? [{ label: "查看提交详情", actionId: "log_view", values: { hash: getField(item, "hash", item.value ?? item.primary) }, variant: "ghost" as const }] : []),
       ];
     default:
       return [];
@@ -710,6 +811,16 @@ function buildBatchActions(actionId: string | undefined, items: OutputListItem[]
     }
     case "tag_list":
       return [
+        {
+          label: `批量删除 (${items.length})`,
+          actionId: "tag_delete",
+          jobs: items.map((item) => ({
+            label: item.primary,
+            values: { name: item.value ?? item.primary },
+          })),
+          tone: "danger",
+          description: "会删除本地选中的 tag。",
+        },
         {
           label: `批量推送 (${items.length})`,
           actionId: "tag_push",
@@ -805,6 +916,18 @@ function buildBatchActions(actionId: string | undefined, items: OutputListItem[]
         },
       ];
     }
+    case "conflict_list":
+      return [
+        {
+          label: `批量标记已解决 (${items.length})`,
+          actionId: "conflict_mark_resolved",
+          jobs: items.map((item) => ({
+            label: item.primary,
+            values: { path: getField(item, "path", item.value ?? item.primary) },
+          })),
+          description: "会对选中冲突文件执行 git add。",
+        },
+      ];
     default:
       return [];
   }
@@ -825,6 +948,8 @@ function getDefaultSortMode(actionId: string | undefined): SortMode {
       return "name-desc";
     case "repo_status":
       return "status";
+    case "conflict_list":
+      return "name-asc";
     default:
       return "default";
   }
@@ -851,6 +976,11 @@ function getSortOptions(actionId: string | undefined): Array<{ value: SortMode; 
     case "repo_status":
       return [
         { value: "status", label: "状态分组" },
+        { value: "name-asc", label: "文件 A-Z" },
+        { value: "name-desc", label: "文件 Z-A" },
+      ];
+    case "conflict_list":
+      return [
         { value: "name-asc", label: "文件 A-Z" },
         { value: "name-desc", label: "文件 Z-A" },
       ];
@@ -1078,6 +1208,10 @@ export function OutputPanel() {
       add(toolbarActions.find((action) => action.actionId === "tag_publish"));
       add(toolbarActions.find((action) => action.actionId === "tag_force_sync"));
     }
+    if (state.output.actionId === "conflict_list") {
+      add(toolbarActions.find((action) => action.actionId === "conflict_summary"));
+      add(toolbarActions.find((action) => action.actionId === "conflict_open"));
+    }
 
     return Array.from(picked.values()).slice(0, 4);
   }, [isManageView, state.output.actionId, toolbarActions]);
@@ -1101,6 +1235,10 @@ export function OutputPanel() {
           ? selectedItem
             ? `当前选中 tag: ${selectedItem.primary}`
             : state.output.emptyHint ?? "暂无标签"
+          : state.output.actionId === "conflict_list"
+            ? selectedItem
+              ? `当前冲突文件: ${getField(selectedItem, "path", selectedItem.primary)}`
+              : state.output.emptyHint ?? "暂无冲突"
           : state.output.actionId === "worktree_list"
             ? selectedItem
               ? `当前选中 worktree: ${selectedItem.fields?.path ?? selectedItem.primary}`
@@ -1149,6 +1287,13 @@ export function OutputPanel() {
               { label: "当前选中", value: selectedItem?.primary || "未选择" },
               { label: "推送目标", value: defaultRemote || "未设置 remote" },
             ]
+          : state.output.actionId === "conflict_list"
+            ? [
+                { label: "冲突文件数", value: `${items.length}` },
+                { label: "当前选中", value: selectedItem ? getField(selectedItem, "path", selectedItem.primary) : "未选择" },
+                { label: "模块", value: selectedItem ? getField(selectedItem, "module", "-") : "-" },
+                { label: "建议", value: selectedItem ? getField(selectedItem, "reason", "-") : "请选择一条冲突文件" },
+              ]
           : state.output.actionId === "worktree_list"
             ? [
                 { label: "Worktree 总数", value: `${items.length}` },
@@ -1811,21 +1956,19 @@ export function OutputPanel() {
       )}
       </div>
       {dialogAction && sourceModule ? (
-        <Suspense fallback={null}>
-          <ActionDialog
-            action={dialogAction}
-            moduleId={sourceModule.id}
-            catalog={state.catalog}
-            values={dialogValues}
-            busy={state.busy}
-            onChange={setDialogValues}
-            onClose={closeActionDialog}
-            onSubmit={(values) => {
-              void performAction(dialogAction, values);
-              closeActionDialog();
-            }}
-          />
-        </Suspense>
+        <ActionDialog
+          action={dialogAction}
+          moduleId={sourceModule.id}
+          catalog={state.catalog}
+          values={dialogValues}
+          busy={state.busy}
+          onChange={setDialogValues}
+          onClose={closeActionDialog}
+          onSubmit={(values) => {
+            void performAction(dialogAction, values);
+            closeActionDialog();
+          }}
+        />
       ) : null}
       {batchAction ? (
         <Modal

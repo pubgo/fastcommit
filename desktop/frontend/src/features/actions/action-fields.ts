@@ -36,6 +36,12 @@ export function resolveActionFieldOptions(moduleID: string, actionID: string, fi
       { label: "rebase", value: "rebase" },
     ];
   }
+  if (fieldKey === "strategy") {
+    return [
+      { label: "ours（保留当前分支）", value: "ours" },
+      { label: "theirs（保留对端版本）", value: "theirs" },
+    ];
+  }
 
   if (fieldKey === "remote") {
     return toOptions(catalog.remotes);
@@ -80,12 +86,26 @@ export function resolveActionFieldOptions(moduleID: string, actionID: string, fi
     return toOptions(catalog.tags);
   }
 
+  if (moduleID === "tag" && actionID === "tag_delete" && fieldKey === "name") {
+    return toOptions(catalog.tags);
+  }
+
+  if (moduleID === "tag" && actionID === "tag_delete" && fieldKey === "delete_remote") {
+    return [
+      { label: "仅删除本地", value: "false" },
+      { label: "同时删除远端", value: "true" },
+    ];
+  }
+
   if (moduleID === "pr" && actionID === "pr_create" && fieldKey === "base") {
     return toOptions(catalog.branches);
   }
 
   if (moduleID === "pr" && (actionID === "pr_view" || actionID === "pr_close") && fieldKey === "id") {
     return toOptions(catalog.prs);
+  }
+  if (moduleID === "conflict" && (actionID === "conflict_open" || actionID === "conflict_resolve" || actionID === "conflict_mark_resolved") && fieldKey === "path") {
+    return toOptions(catalog.conflicts);
   }
 
   return [];

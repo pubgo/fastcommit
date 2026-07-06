@@ -1,6 +1,6 @@
 import * as FastgitAPI from "../../bindings/fastgitdesktop/fastgitservice";
 
-import type { ActionRunRequest, CommandResult, DesktopModule, GitHubAuthStatus } from "../app/types";
+import type { ActionRunRequest, CommandResult, DesktopModule, GitHubAuthStatus, GitHubKeychainStatus } from "../app/types";
 
 export class BackendService {
   getRepoRoot(): Promise<string> {
@@ -17,6 +17,10 @@ export class BackendService {
 
   async getGitHubAuthStatus(): Promise<GitHubAuthStatus> {
     return await FastgitAPI.GetGitHubAuthStatus();
+  }
+
+  async getGitHubKeychainStatus(): Promise<GitHubKeychainStatus> {
+    return await FastgitAPI.GetGitHubKeychainStatus();
   }
 
   setGitHubToken(token: string): Promise<void> {

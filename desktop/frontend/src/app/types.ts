@@ -3,10 +3,11 @@ import type {
   CommandResult,
   DesktopModule,
   GitHubAuthStatus,
+  GitHubKeychainStatus,
   ModuleAction,
 } from "../../bindings/fastgitdesktop/models";
 
-export type { ActionRunRequest, CommandResult, DesktopModule, GitHubAuthStatus, ModuleAction };
+export type { ActionRunRequest, CommandResult, DesktopModule, GitHubAuthStatus, GitHubKeychainStatus, ModuleAction };
 
 export type SidebarMenuType = "source" | "collaboration" | "release" | "all";
 
@@ -54,6 +55,7 @@ export interface OperationOutput {
 export interface ResourceCatalog {
   remotes: OutputListItem[];
   branches: OutputListItem[];
+  conflicts: OutputListItem[];
   issues: OutputListItem[];
   tags: OutputListItem[];
   worktrees: OutputListItem[];
@@ -71,6 +73,7 @@ export interface AppState {
   repoNamespaces: string[];
   repoStatus: string;
   githubAuthStatus: GitHubAuthStatus | null;
+  githubKeychainStatus: GitHubKeychainStatus | null;
   projectSettings: Record<string, ProjectSettings>;
   modules: DesktopModule[];
   selectedModuleId: string | null;

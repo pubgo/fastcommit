@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	gitsshknownhosts "github.com/go-git/go-git/v6/plumbing/transport/ssh/knownhosts"
 	"github.com/google/go-github/v71/github"
 	"github.com/kevinburke/ssh_config"
+	"github.com/pubgo/fastgit/pkg/gitconflict"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 )
@@ -65,6 +67,12 @@ type GitHubAuthStatus struct {
 	Message    string `json:"message"`
 }
 
+type GitHubKeychainStatus struct {
+	Supported bool   `json:"supported"`
+	HasToken  bool   `json:"hasToken"`
+	Message   string `json:"message"`
+}
+
 type ActionRunRequest struct {
 	ModuleID string            `json:"moduleID"`
 	ActionID string            `json:"actionID"`
@@ -72,9 +80,19 @@ type ActionRunRequest struct {
 }
 
 type FastgitService struct {
-	repoRoot    string
-	githubToken string
+	repoRoot          string
+	githubToken       string
+	githubTokenSource string
+	githubTokenNote   string
 }
+
+const (
+	keychainServiceName      = "com.pubgo.fastgit.github-token"
+	keychainAccountName      = "github-token"
+	keychainSaveTokenPrefix  = "__FASTGIT_KEYCHAIN_SAVE__:"
+	keychainLoginTokenMarker = "__FASTGIT_KEYCHAIN_LOGIN__"
+	keychainDeleteTokenMark  = "__FASTGIT_KEYCHAIN_DELETE__"
+)
 
 type desktopSSHAuth struct {
 	user            string
@@ -122,16 +140,69 @@ func (s *FastgitService) SetRepoRoot(path string) error {
 }
 
 func (s *FastgitService) SetGitHubToken(token string) {
-	s.githubToken = strings.TrimSpace(token)
+	trimmed := strings.TrimSpace(token)
+
+	switch {
+	case strings.HasPrefix(trimmed, keychainSaveTokenPrefix):
+		rawToken := strings.TrimSpace(strings.TrimPrefix(trimmed, keychainSaveTokenPrefix))
+		if rawToken == "" {
+			s.githubTokenNote = "保存 Keychain 失败: token 为空"
+			return
+		}
+		if err := saveTokenToKeychain(rawToken); err != nil {
+			s.githubTokenNote = fmt.Sprintf("保存 Keychain 失败: %v", err)
+			return
+		}
+		s.githubToken = rawToken
+		s.githubTokenSource = "keychain"
+		s.githubTokenNote = "Token 已保存到 Keychain，并已登录当前会话"
+		return
+	case trimmed == keychainLoginTokenMarker:
+		if err := authenticateWithBiometricsOrPasscode("Use Touch ID or system password to unlock GitHub token"); err != nil {
+			s.githubTokenNote = fmt.Sprintf("设备认证失败: %v", err)
+			return
+		}
+		rawToken, err := loadTokenFromKeychain()
+		if err != nil {
+			s.githubTokenNote = fmt.Sprintf("Keychain 登录失败: %v", err)
+			return
+		}
+		s.githubToken = rawToken
+		s.githubTokenSource = "keychain"
+		s.githubTokenNote = "已通过 Keychain 解锁 Token（支持 Touch ID）"
+		return
+	case trimmed == keychainDeleteTokenMark:
+		if err := deleteTokenFromKeychain(); err != nil {
+			s.githubTokenNote = fmt.Sprintf("清除 Keychain token 失败: %v", err)
+			return
+		}
+		s.githubToken = ""
+		s.githubTokenSource = ""
+		s.githubTokenNote = "已清除 Keychain token"
+		return
+	}
+
+	s.githubToken = trimmed
+	if trimmed == "" {
+		s.githubTokenSource = ""
+		s.githubTokenNote = "已清除当前会话 Token"
+		return
+	}
+	s.githubTokenSource = "session"
+	s.githubTokenNote = "GitHub Token 已更新（当前会话）"
 }
 
 func (s *FastgitService) GetGitHubAuthStatus() GitHubAuthStatus {
 	token, source := s.githubTokenValue()
 	if token == "" {
+		message := "未配置 GitHub Token"
+		if note := strings.TrimSpace(s.githubTokenNote); note != "" {
+			message = note
+		}
 		return GitHubAuthStatus{
 			Configured: false,
 			Source:     "none",
-			Message:    "未配置 GitHub Token",
+			Message:    message,
 		}
 	}
 
@@ -161,13 +232,50 @@ func (s *FastgitService) GetGitHubAuthStatus() GitHubAuthStatus {
 	}
 
 	label := "环境变量"
-	if source == "session" {
+	switch source {
+	case "session":
 		label = "当前会话"
+	case "keychain":
+		label = "Keychain"
+	}
+	if note := strings.TrimSpace(s.githubTokenNote); note != "" && source != "env" {
+		label = fmt.Sprintf("%s，%s", label, note)
 	}
 	return GitHubAuthStatus{
 		Configured: true,
 		Source:     source,
 		Message:    fmt.Sprintf("GitHub 已连接: %s/%s (%s)", owner, repoName, label),
+	}
+}
+
+func (s *FastgitService) GetGitHubKeychainStatus() GitHubKeychainStatus {
+	if runtime.GOOS != "darwin" {
+		return GitHubKeychainStatus{
+			Supported: false,
+			HasToken:  false,
+			Message:   "当前系统不支持 macOS Keychain",
+		}
+	}
+
+	hasToken, err := keychainTokenExists()
+	if err != nil {
+		return GitHubKeychainStatus{
+			Supported: true,
+			HasToken:  false,
+			Message:   fmt.Sprintf("Keychain 状态检查失败: %v", err),
+		}
+	}
+	if hasToken {
+		return GitHubKeychainStatus{
+			Supported: true,
+			HasToken:  true,
+			Message:   "Keychain 中已保存 GitHub Token",
+		}
+	}
+	return GitHubKeychainStatus{
+		Supported: true,
+		HasToken:  false,
+		Message:   "Keychain 中未发现 GitHub Token，请先保存",
 	}
 }
 
@@ -190,7 +298,7 @@ func (s *FastgitService) GetModules() []DesktopModule {
 		{
 			ID:          "remote",
 			Title:       "Remote 管理",
-			Description: "列出 / 添加 / 编辑 / rename / 删除 / 抓取",
+			Description: "列出 / 添加 / 编辑 / rename / 删除 / 抓取 / 转推",
 			Actions: []ModuleAction{
 				{ID: "remote_list", Title: "列出 remote", Description: "显示当前仓库所有 remote"},
 				{ID: "remote_add", Title: "添加 remote", Description: "新增一个 remote", Fields: []ActionField{
@@ -214,6 +322,11 @@ func (s *FastgitService) GetModules() []DesktopModule {
 					{Key: "name", Label: "名称", Placeholder: "origin", Required: true},
 				}},
 				{ID: "remote_fetch_all", Title: "抓取全部 remote", Description: "抓取所有 remote 并 prune"},
+				{ID: "remote_relay_push", Title: "转推到外部平台", Description: "将当前仓库推送到其他平台（如 Gitea）", Fields: []ActionField{
+					{Key: "name", Label: "目标 remote 名称", Placeholder: "gitea", Required: true, Default: "gitea"},
+					{Key: "url", Label: "目标仓库 URL", Placeholder: "git@gitea.example.com:owner/repo.git", Required: true},
+					{Key: "mode", Label: "推送模式", Placeholder: "all|current", Required: true, Default: "all"},
+				}},
 			},
 		},
 		{
@@ -273,12 +386,47 @@ func (s *FastgitService) GetModules() []DesktopModule {
 		{
 			ID:          "tag",
 			Title:       "Tag 管理",
-			Description: "列出 / 创建 / 推送 / 对齐远端",
+			Description: "列出 / 创建 / 删除 / 推送 / 对齐远端",
 			Actions: []ModuleAction{
 				{ID: "tag_list", Title: "列出 tag", Description: "列出本地 tags"},
 				{ID: "tag_publish", Title: "创建 tag", Description: "在当前 HEAD 创建 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}}},
+				{ID: "tag_delete", Title: "删除 tag", Description: "删除本地 tag，可选同步删除远端", Fields: []ActionField{
+					{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true},
+					{Key: "delete_remote", Label: "同时删除远端", Placeholder: "false|true", Default: "false"},
+					{Key: "remote", Label: "Remote", Placeholder: "选择 remote", Default: "origin"},
+				}},
 				{ID: "tag_push", Title: "推送 tag", Description: "推送指定 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}, {Key: "remote", Label: "Remote", Placeholder: "选择 remote", Required: true, Default: "origin"}}},
 				{ID: "tag_force_sync", Title: "强制对齐远端 tag", Description: "强制用指定 remote 上同名 tag 覆盖本地 tag", Fields: []ActionField{{Key: "name", Label: "Tag", Placeholder: "v1.2.3", Required: true}, {Key: "remote", Label: "Remote", Placeholder: "选择 remote", Required: true, Default: "origin"}, {Key: "confirm", Label: "确认文本", Placeholder: "输入 RESET 确认", Required: true}}},
+			},
+		},
+		{
+			ID:          "conflict",
+			Title:       "冲突管理",
+			Description: "列出 / 摘要 / 打开 / 选择保留版本 / 标记已解决",
+			Actions: []ModuleAction{
+				{ID: "conflict_list", Title: "列出冲突文件", Description: "列出当前仓库所有冲突文件"},
+				{ID: "conflict_summary", Title: "冲突摘要", Description: "按模块分组展示冲突摘要和建议"},
+				{ID: "conflict_open", Title: "打开冲突文件", Description: "在系统默认编辑器中打开冲突文件（留空为全部）", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "留空表示打开全部冲突文件"},
+				}},
+				{ID: "conflict_resolve", Title: "保留 ours/theirs", Description: "对指定冲突文件选择 ours 或 theirs 版本", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "cmds/pullcmd/cmd.go", Required: true},
+					{Key: "strategy", Label: "策略", Placeholder: "ours|theirs", Required: true, Default: "ours"},
+				}},
+				{ID: "conflict_mark_resolved", Title: "标记已解决", Description: "将冲突文件加入暂存区（git add）", Fields: []ActionField{
+					{Key: "path", Label: "文件路径", Placeholder: "cmds/pullcmd/cmd.go", Required: true},
+				}},
+			},
+		},
+		{
+			ID:          "log",
+			Title:       "Commit Log",
+			Description: "查询提交历史 / 查看提交详情",
+			Actions: []ModuleAction{
+				{ID: "log_list", Title: "查询提交历史", Description: "默认加载最近 50 条提交"},
+				{ID: "log_view", Title: "查看提交详情", Description: "查看指定 commit 的变更明细", Fields: []ActionField{
+					{Key: "hash", Label: "Commit Hash", Placeholder: "abc1234", Required: true},
+				}},
 			},
 		},
 	}
@@ -439,6 +587,17 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 		return s.remoteFetch(ctx, name)
 	case "remote_fetch_all":
 		return s.remoteFetchAll(ctx)
+	case "remote_relay_push":
+		name, err := requiredValue(values, "name", "目标 remote 名称")
+		if err != nil {
+			return "", err
+		}
+		url, err := requiredValue(values, "url", "目标仓库 URL")
+		if err != nil {
+			return "", err
+		}
+		mode := optionalValue(values, "mode", "all")
+		return s.remoteRelayPush(ctx, name, url, mode)
 	case "branch_list":
 		return s.branchList(ctx)
 	case "branch_create":
@@ -548,6 +707,14 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 			return "", err
 		}
 		return s.tagPublish(ctx, name)
+	case "tag_delete":
+		name, err := requiredValue(values, "name", "Tag")
+		if err != nil {
+			return "", err
+		}
+		deleteRemote := optionalBoolValue(values, "delete_remote", false)
+		remoteName := optionalValue(values, "remote", "")
+		return s.tagDelete(ctx, name, deleteRemote, remoteName)
 	case "tag_push":
 		name, err := requiredValue(values, "name", "Tag")
 		if err != nil {
@@ -568,6 +735,40 @@ func (s *FastgitService) dispatchAction(ctx context.Context, actionID string, va
 			return "", err
 		}
 		return s.tagForceSync(ctx, remoteName, name)
+	case "conflict_list":
+		return s.conflictList(ctx)
+	case "conflict_summary":
+		return s.conflictSummary(ctx)
+	case "conflict_open":
+		return s.conflictOpen(ctx, optionalValue(values, "path", ""))
+	case "conflict_resolve":
+		path, err := requiredValue(values, "path", "文件路径")
+		if err != nil {
+			return "", err
+		}
+		strategy := optionalValue(values, "strategy", "ours")
+		return s.conflictResolve(ctx, path, strategy)
+	case "conflict_mark_resolved":
+		path, err := requiredValue(values, "path", "文件路径")
+		if err != nil {
+			return "", err
+		}
+		return s.conflictMarkResolved(ctx, path)
+	case "log_list":
+		ref := optionalValue(values, "ref", "HEAD")
+		author := optionalValue(values, "author", "")
+		keyword := optionalValue(values, "keyword", "")
+		limit, err := optionalIntValue(values, "limit", 50)
+		if err != nil {
+			return "", err
+		}
+		return s.logList(ctx, ref, author, keyword, limit)
+	case "log_view":
+		hash, err := requiredValue(values, "hash", "Commit Hash")
+		if err != nil {
+			return "", err
+		}
+		return s.logView(ctx, hash)
 	default:
 		return "", fmt.Errorf("unsupported action: %s", actionID)
 	}
@@ -587,6 +788,36 @@ func optionalValue(values map[string]string, key, def string) string {
 		return def
 	}
 	return v
+}
+
+func optionalIntValue(values map[string]string, key string, def int) (int, error) {
+	v := strings.TrimSpace(values[key])
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconvAtoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s 不是有效数字", key)
+	}
+	if n <= 0 {
+		return 0, fmt.Errorf("%s 必须大于 0", key)
+	}
+	return n, nil
+}
+
+func optionalBoolValue(values map[string]string, key string, def bool) bool {
+	v := strings.ToLower(strings.TrimSpace(values[key]))
+	if v == "" {
+		return def
+	}
+	switch v {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return def
+	}
 }
 
 func validateForceSyncConfirmation(v string) error {
@@ -1266,6 +1497,64 @@ func (s *FastgitService) remoteFetchAll(ctx context.Context) (string, error) {
 	return strings.Join(results, "\n"), nil
 }
 
+func (s *FastgitService) remoteRelayPush(ctx context.Context, name, url, mode string) (string, error) {
+	repo, err := s.openRepo()
+	if err != nil {
+		return "", err
+	}
+
+	name = strings.TrimSpace(name)
+	url = strings.TrimSpace(url)
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode == "" {
+		mode = "all"
+	}
+	if mode != "all" && mode != "current" {
+		return "", fmt.Errorf("推送模式不支持: %s（可选 all|current）", mode)
+	}
+
+	if _, err := repo.Remote(name); err != nil {
+		if _, addErr := s.remoteAdd(ctx, name, url, ""); addErr != nil {
+			return "", addErr
+		}
+	} else {
+		if _, updateErr := s.remoteUpdate(ctx, name, url, ""); updateErr != nil {
+			return "", updateErr
+		}
+	}
+
+	if mode == "current" {
+		out, err := s.repoPush(ctx, name)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("目标平台 remote: %s\nURL: %s\n模式: current\n%s", name, url, strings.TrimSpace(out)), nil
+	}
+
+	branchesOut, err := s.gitInRepo(ctx, "push", name, "--all")
+	if err != nil {
+		return "", err
+	}
+	tagsOut, err := s.gitInRepo(ctx, "push", name, "--tags")
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "目标平台 remote: %s\nURL: %s\n模式: all\n", name, url)
+	if strings.TrimSpace(branchesOut) != "" {
+		fmt.Fprintf(&b, "branches:\n%s\n", strings.TrimSpace(branchesOut))
+	} else {
+		b.WriteString("branches: push completed\n")
+	}
+	if strings.TrimSpace(tagsOut) != "" {
+		fmt.Fprintf(&b, "tags:\n%s", strings.TrimSpace(tagsOut))
+	} else {
+		b.WriteString("tags: push completed")
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
 func (s *FastgitService) branchList(ctx context.Context) (string, error) {
 	_ = ctx
 	repo, err := s.openRepo()
@@ -1573,6 +1862,219 @@ func (s *FastgitService) gitInRepo(ctx context.Context, args ...string) (string,
 	return string(out), nil
 }
 
+func (s *FastgitService) logList(ctx context.Context, ref, author, keyword string, limit int) (string, error) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		ref = "HEAD"
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
+	args := []string{
+		"log",
+		"--date=iso-strict",
+		fmt.Sprintf("-%d", limit),
+		"--pretty=format:%H\t%h\t%an\t%ad\t%s",
+	}
+	if strings.TrimSpace(author) != "" {
+		args = append(args, "--author="+strings.TrimSpace(author))
+	}
+	if strings.TrimSpace(keyword) != "" {
+		args = append(args, "--grep="+strings.TrimSpace(keyword))
+	}
+	args = append(args, ref)
+
+	out, err := s.gitInRepo(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "no commits", nil
+	}
+	return trimmed, nil
+}
+
+func (s *FastgitService) conflictList(ctx context.Context) (string, error) {
+	snap, err := gitconflict.BuildSnapshot(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	if len(snap.Files) == 0 {
+		return "no conflicts", nil
+	}
+	var b strings.Builder
+	for _, file := range snap.Files {
+		fmt.Fprintf(&b, "%s\t%s\t%s\n", file.Path, file.Module, file.Reason)
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
+func (s *FastgitService) conflictSummary(ctx context.Context) (string, error) {
+	snap, err := gitconflict.BuildSnapshot(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(snap.Summary), nil
+}
+
+func (s *FastgitService) conflictOpen(ctx context.Context, path string) (string, error) {
+	targets, err := s.conflictTargetPaths(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	if len(targets) == 0 {
+		return "no conflicts to open", nil
+	}
+	opened := make([]string, 0, len(targets))
+	for _, target := range targets {
+		fullPath := filepath.Join(s.repoRoot, filepath.FromSlash(target))
+		if err := s.openFileWithSystemEditor(ctx, fullPath); err != nil {
+			return strings.Join(opened, "\n"), fmt.Errorf("open %s: %w", target, err)
+		}
+		opened = append(opened, fmt.Sprintf("opened: %s", target))
+	}
+	return strings.Join(opened, "\n"), nil
+}
+
+func (s *FastgitService) conflictResolve(ctx context.Context, path, strategy string) (string, error) {
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	strategy = strings.ToLower(strings.TrimSpace(strategy))
+	flag := "--ours"
+	switch strategy {
+	case "ours":
+		flag = "--ours"
+	case "theirs":
+		flag = "--theirs"
+	default:
+		return "", fmt.Errorf("strategy 不支持: %s（可选 ours|theirs）", strategy)
+	}
+	if _, err := s.gitInRepo(ctx, "checkout", flag, "--", target); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("resolved via %s: %s\nnext: 执行“标记已解决”完成 git add", strategy, target), nil
+}
+
+func (s *FastgitService) conflictMarkResolved(ctx context.Context, path string) (string, error) {
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.gitInRepo(ctx, "add", "--", target); err != nil {
+		return "", err
+	}
+	remaining, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return fmt.Sprintf("marked resolved: %s", target), nil
+	}
+	if len(remaining) == 0 {
+		return fmt.Sprintf("marked resolved: %s\nall conflicts resolved", target), nil
+	}
+	return fmt.Sprintf("marked resolved: %s\nremaining conflicts: %d", target, len(remaining)), nil
+}
+
+func (s *FastgitService) conflictTargetPaths(ctx context.Context, path string) ([]string, error) {
+	conflicts, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(path) == "" {
+		return conflicts, nil
+	}
+	target, err := s.resolveConflictPath(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	return []string{target}, nil
+}
+
+func (s *FastgitService) resolveConflictPath(ctx context.Context, path string) (string, error) {
+	target, err := normalizeRepoRelativePath(path)
+	if err != nil {
+		return "", err
+	}
+	conflicts, err := gitconflict.ListFiles(ctx, s.repoRoot)
+	if err != nil {
+		return "", err
+	}
+	if len(conflicts) == 0 {
+		return "", errors.New("no conflicts")
+	}
+	normalizedTarget := filepath.ToSlash(filepath.Clean(filepath.FromSlash(target)))
+	for _, candidate := range conflicts {
+		normalizedCandidate := filepath.ToSlash(filepath.Clean(filepath.FromSlash(candidate)))
+		if normalizedCandidate == normalizedTarget {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("冲突文件不存在: %s", target)
+}
+
+func (s *FastgitService) openFileWithSystemEditor(ctx context.Context, fullPath string) error {
+	if editor := strings.TrimSpace(os.Getenv("EDITOR")); editor != "" {
+		parts := strings.Fields(editor)
+		if len(parts) > 0 {
+			cmd := exec.CommandContext(ctx, parts[0], append(parts[1:], fullPath)...)
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+			_ = cmd.Process.Release()
+			return nil
+		}
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		cmd := exec.CommandContext(ctx, "open", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	case "windows":
+		cmd := exec.CommandContext(ctx, "cmd", "/c", "start", "", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	default:
+		cmd := exec.CommandContext(ctx, "xdg-open", fullPath)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		_ = cmd.Process.Release()
+		return nil
+	}
+}
+
+func (s *FastgitService) logView(ctx context.Context, hash string) (string, error) {
+	hash = strings.TrimSpace(hash)
+	if hash == "" {
+		return "", errors.New("Commit Hash 不能为空")
+	}
+
+	out, err := s.gitInRepo(
+		ctx,
+		"show",
+		"--date=iso-strict",
+		"--name-status",
+		"--pretty=format:commit\t%H%nshort\t%h%nauthor\t%an <%ae>%ndate\t%ad%nrefs\t%D%nsubject\t%s%n%n%b",
+		hash,
+	)
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "", fmt.Errorf("未找到提交: %s", hash)
+	}
+	return trimmed, nil
+}
+
 func (s *FastgitService) issueList(ctx context.Context) (string, error) {
 	owner, repoName, client, err := s.githubClient(ctx)
 	if err != nil {
@@ -1865,6 +2367,56 @@ func (s *FastgitService) tagPublish(ctx context.Context, name string) (string, e
 		return "", err
 	}
 	return fmt.Sprintf("tag created: %s", name), nil
+}
+
+func (s *FastgitService) tagDelete(ctx context.Context, name string, deleteRemote bool, remoteName string) (string, error) {
+	out, err := s.gitInRepo(ctx, "tag", "-d", name)
+	if err != nil {
+		return "", err
+	}
+	localOut := strings.TrimSpace(out)
+	if localOut == "" {
+		localOut = fmt.Sprintf("tag deleted: %s", name)
+	}
+
+	if !deleteRemote {
+		return localOut, nil
+	}
+
+	repo, err := s.openRepo()
+	if err != nil {
+		return "", err
+	}
+	remoteName, err = s.resolveRemoteName(repo, remoteName, "")
+	if err != nil {
+		return "", err
+	}
+
+	if isSSHRemote(repo, remoteName) {
+		remoteOut, remoteErr := s.gitInRepo(ctx, "push", remoteName, fmt.Sprintf(":refs/tags/%s", name))
+		if remoteErr != nil {
+			return "", remoteErr
+		}
+		trimmed := strings.TrimSpace(remoteOut)
+		if trimmed == "" {
+			trimmed = fmt.Sprintf("remote tag deleted: %s/%s", remoteName, name)
+		}
+		return fmt.Sprintf("%s\n%s", localOut, trimmed), nil
+	}
+
+	clientOptions, err := s.clientOptionsForRemote(repo, remoteName)
+	if err != nil {
+		return "", err
+	}
+	refSpec := gitconfig.RefSpec(fmt.Sprintf(":refs/tags/%s", name))
+	if err := repo.PushContext(ctx, &git.PushOptions{
+		RemoteName:    remoteName,
+		RefSpecs:      []gitconfig.RefSpec{refSpec},
+		ClientOptions: clientOptions,
+	}); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s\nremote tag deleted: %s/%s", localOut, remoteName, name), nil
 }
 
 func (s *FastgitService) tagPush(ctx context.Context, remoteName, name string) (string, error) {
@@ -2577,7 +3129,11 @@ func existingFiles(paths []string) ([]string, error) {
 
 func (s *FastgitService) githubTokenValue() (token string, source string) {
 	if value := strings.TrimSpace(s.githubToken); value != "" {
-		return value, "session"
+		src := strings.TrimSpace(s.githubTokenSource)
+		if src == "" {
+			src = "session"
+		}
+		return value, src
 	}
 	if value := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); value != "" {
 		return value, "env"
@@ -2586,4 +3142,83 @@ func (s *FastgitService) githubTokenValue() (token string, source string) {
 		return value, "env"
 	}
 	return "", "none"
+}
+
+func saveTokenToKeychain(token string) error {
+	if strings.TrimSpace(token) == "" {
+		return errors.New("token is empty")
+	}
+	_, err := runSecurityCommand(
+		"add-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+		"-w", token,
+		"-U",
+	)
+	return err
+}
+
+func loadTokenFromKeychain() (string, error) {
+	out, err := runSecurityCommand(
+		"find-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+		"-w",
+	)
+	if err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(out)
+	if token == "" {
+		return "", errors.New("keychain token is empty")
+	}
+	return token, nil
+}
+
+func deleteTokenFromKeychain() error {
+	_, err := runSecurityCommand(
+		"delete-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+	)
+	if err == nil {
+		return nil
+	}
+	// security returns non-zero when the item does not exist.
+	if strings.Contains(strings.ToLower(err.Error()), "could not be found") {
+		return nil
+	}
+	return err
+}
+
+func keychainTokenExists() (bool, error) {
+	_, err := runSecurityCommand(
+		"find-generic-password",
+		"-a", keychainAccountName,
+		"-s", keychainServiceName,
+	)
+	if err == nil {
+		return true, nil
+	}
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "could not be found") || strings.Contains(lower, "item not found") {
+		return false, nil
+	}
+	return false, err
+}
+
+func runSecurityCommand(args ...string) (string, error) {
+	if runtime.GOOS != "darwin" {
+		return "", errors.New("macOS Keychain is only available on darwin")
+	}
+	cmd := exec.Command("security", args...)
+	out, err := cmd.CombinedOutput()
+	text := strings.TrimSpace(string(out))
+	if err != nil {
+		if text == "" {
+			return "", err
+		}
+		return "", errors.New(text)
+	}
+	return text, nil
 }

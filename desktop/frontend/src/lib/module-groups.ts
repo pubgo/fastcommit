@@ -6,6 +6,8 @@ export function menuForModule(moduleId: string): SidebarMenuType {
     case "remote":
     case "branch":
     case "worktree":
+    case "conflict":
+    case "log":
       return "source";
     case "issue":
     case "pr":

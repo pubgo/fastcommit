@@ -37,7 +37,7 @@ export function classifyAction(actionID: string): string {
   if (actionID.endsWith("_checkout") || actionID.endsWith("_switch")) {
     return "切换";
   }
-  if (actionID.endsWith("_pull") || actionID.endsWith("_push") || actionID.endsWith("_sync") || actionID.endsWith("_merge") || actionID.endsWith("_fetch") || actionID.endsWith("_fetch_all")) {
+  if (actionID.endsWith("_pull") || actionID.endsWith("_push") || actionID.endsWith("_sync") || actionID.endsWith("_merge") || actionID.endsWith("_fetch") || actionID.endsWith("_fetch_all") || actionID.endsWith("_resolve")) {
     return "执行";
   }
   return "操作";
@@ -92,6 +92,9 @@ export function actionSubmitLabel(action: ModuleAction | null): string {
   }
   if (action.id.endsWith("_push")) {
     return "推送";
+  }
+  if (action.id.endsWith("_resolve")) {
+    return "应用";
   }
   if (action.id.endsWith("_checkout") || action.id.endsWith("_switch")) {
     return "切换";

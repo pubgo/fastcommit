@@ -7,10 +7,16 @@ import { Input } from "../../components/ui/input";
 
 type SettingsSection = "projects" | "auth" | "defaults";
 
+const KEYCHAIN_SAVE_TOKEN_PREFIX = "__FASTGIT_KEYCHAIN_SAVE__:";
+const KEYCHAIN_LOGIN_TOKEN_MARKER = "__FASTGIT_KEYCHAIN_LOGIN__";
+const KEYCHAIN_DELETE_TOKEN_MARKER = "__FASTGIT_KEYCHAIN_DELETE__";
+
 function sourceLabel(source: string | undefined): string {
   switch (source) {
     case "session":
       return "当前会话";
+    case "keychain":
+      return "Keychain（已解锁）";
     case "env":
       return "环境变量";
     default:
@@ -61,12 +67,22 @@ function buildProjectLabels(paths: string[]): Map<string, string> {
 
 const sections: Array<{ id: SettingsSection; title: string; summary: string }> = [
   { id: "projects", title: "Projects", summary: "仓库命名空间与切换" },
-  { id: "auth", title: "Auth", summary: "GitHub 认证与会话 Token" },
+  { id: "auth", title: "Auth", summary: "GitHub 认证 / Keychain / 指纹登录" },
   { id: "defaults", title: "Defaults", summary: "当前项目默认分支与 remote" },
 ];
 
 export function RepoSwitcher() {
-  const { state, addRepo, switchRepo, removeRepo, setGitHubToken, refreshGitHubAuthStatus, updateProjectSettings, prefetchAction } = useAppContext();
+  const {
+    state,
+    addRepo,
+    switchRepo,
+    removeRepo,
+    setGitHubToken,
+    refreshGitHubAuthStatus,
+    refreshGitHubKeychainStatus,
+    updateProjectSettings,
+    prefetchAction,
+  } = useAppContext();
   const [activeSection, setActiveSection] = useState<SettingsSection>("projects");
   const [draft, setDraft] = useState("");
   const [selectedPath, setSelectedPath] = useState("");
@@ -156,13 +172,51 @@ export function RepoSwitcher() {
     }
   };
 
+  const onSaveTokenToKeychain = async () => {
+    const next = tokenDraft.trim();
+    if (!next) {
+      return;
+    }
+    setSavingToken(true);
+    try {
+      await setGitHubToken(`${KEYCHAIN_SAVE_TOKEN_PREFIX}${next}`);
+      setTokenDraft("");
+      setShowToken(false);
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const onLoginWithKeychain = async () => {
+    if (!state.githubKeychainStatus?.hasToken) {
+      await refreshGitHubKeychainStatus();
+      return;
+    }
+    setSavingToken(true);
+    try {
+      await setGitHubToken(KEYCHAIN_LOGIN_TOKEN_MARKER);
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const onDeleteKeychainToken = async () => {
+    setSavingToken(true);
+    try {
+      await setGitHubToken(KEYCHAIN_DELETE_TOKEN_MARKER);
+      await Promise.all([refreshGitHubAuthStatus(), refreshGitHubKeychainStatus()]);
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
   const onClearToken = async () => {
     setSavingToken(true);
     try {
       await setGitHubToken("");
       setTokenDraft("");
       setShowToken(false);
-      await refreshGitHubAuthStatus();
+      await Promise.all([refreshGitHubAuthStatus(), refreshGitHubKeychainStatus()]);
     } finally {
       setSavingToken(false);
     }
@@ -321,8 +375,10 @@ export function RepoSwitcher() {
               </div>
               <div className="repo-settings__current">
                 <span>作用域</span>
-                <strong>当前会话</strong>
-                <small>Token 只在桌面客户端当前会话中生效，不写入本地存储。</small>
+                <strong>{state.githubAuthStatus?.source === "keychain" ? "Keychain + 当前会话" : "当前会话"}</strong>
+                <small>
+                  {state.githubKeychainStatus?.message ?? "可选将 Token 保存到 macOS Keychain，然后通过指纹解锁到当前会话。"}
+                </small>
               </div>
             </div>
 
@@ -341,19 +397,36 @@ export function RepoSwitcher() {
               <Button variant="primary" onClick={() => void onApplyToken()} disabled={savingToken || tokenDraft.trim().length === 0}>
                 应用 Token
               </Button>
+              <Button variant="ghost" onClick={() => void onSaveTokenToKeychain()} disabled={savingToken || tokenDraft.trim().length === 0}>
+                保存到 Keychain
+              </Button>
             </div>
 
             <div className="repo-settings__focusbar">
               <div className="repo-settings__focusmeta">
                 <strong>认证控制</strong>
-                <span>建议优先使用会话 Token，避免把敏感信息固化在工作区配置里。</span>
+                <span>登录优先用“指纹登录（Keychain）”，只在需要时手动输入 Token。</span>
               </div>
               <div className="repo-settings__focusactions">
-                <Button variant="ghost" onClick={() => void refreshGitHubAuthStatus()} disabled={savingToken}>
+                <Button
+                  variant="primary"
+                  onClick={() => void onLoginWithKeychain()}
+                  disabled={savingToken || !state.githubKeychainStatus?.hasToken}
+                >
+                  指纹登录（Keychain）
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => void Promise.all([refreshGitHubAuthStatus(), refreshGitHubKeychainStatus()])}
+                  disabled={savingToken}
+                >
                   刷新状态
                 </Button>
                 <Button variant="ghost" onClick={() => void onClearToken()} disabled={savingToken}>
                   清除会话 Token
+                </Button>
+                <Button variant="ghost" onClick={() => void onDeleteKeychainToken()} disabled={savingToken}>
+                  清除 Keychain Token
                 </Button>
               </div>
             </div>
