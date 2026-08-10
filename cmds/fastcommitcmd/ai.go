@@ -127,8 +127,10 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 		}
 	}
 
+	// Stage tracked modifications/deletions and new untracked files (respects .gitignore).
+	// Previously used `git add --update`, which silently skipped new files.
 	if utils.IsDirty().Unwrap() {
-		assert.Must(utils.ShellExec(ctx, "git", "add", "--update"))
+		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
 	}
 
 	diffResult := utils.GetStagedDiff(ctx).Unwrap()

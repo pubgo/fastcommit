@@ -53,6 +53,7 @@
 - 默认限制提交信息风格与长度
 - 支持 `--amend`、`--fast`、`--candidates`、`--single`、`--skip-check`、`--skip-policy`、`--override-policy`
 - 默认三选一（`~/.config/fastgit/config.yaml` 中 `commit.candidates_default: true`；`.fastgit/commit.yaml` 可覆盖）
+- 提交前自动 `git add -A`（含新建未跟踪文件；仍尊重 `.gitignore`）
 - 提交前默认运行 `check run --staged-only`（可用 `--skip-check` 跳过）
 - `.fastgit/policy.yaml` 中 `enforce: true` 时，分支名/commit message 违规将阻断提交
 - 读取 `.fastgit/commit.yaml`（locale、max_length、require_scope）
