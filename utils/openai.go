@@ -1,6 +1,11 @@
 package utils
 
-import "github.com/sashabaranov/go-openai"
+import (
+	"net/http"
+	"time"
+
+	"github.com/sashabaranov/go-openai"
+)
 
 type OpenaiClient struct {
 	Client *openai.Client
@@ -13,9 +18,12 @@ type OpenaiConfig struct {
 	Model   string `yaml:"model"`
 }
 
+const defaultOpenAITimeout = 45 * time.Second
+
 func NewOpenaiClient(cfg *OpenaiConfig) *OpenaiClient {
 	var openaiCfg = openai.DefaultConfig(cfg.ApiKey)
 	openaiCfg.BaseURL = cfg.BaseURL
+	openaiCfg.HTTPClient = &http.Client{Timeout: defaultOpenAITimeout}
 	return &OpenaiClient{
 		Client: openai.NewClientWithConfig(openaiCfg),
 		Cfg:    cfg,
