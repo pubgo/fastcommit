@@ -43,7 +43,7 @@ func CompactDiffForAI(diff string) (string, DiffCompactStats) {
 	var kept []string
 	var omitted []string
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Staged changes summary (%d files). Diff abbreviated for AI.\n\n", len(sections)))
+	fmt.Fprintf(&b, "Staged changes summary (%d files). Diff abbreviated for AI.\n\n", len(sections))
 
 	for _, section := range sections {
 		path := diffSectionPath(section)
