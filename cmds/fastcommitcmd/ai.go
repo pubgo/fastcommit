@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,102 +32,72 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 	res := utils.PreGitPush(ctx)
 	if res != "" {
 		if shouldPullDueToRemoteUpdate(res) {
-			err := gitPull()
-			if err != nil {
-				if gitconflict.HasConflicts(ctx, "") {
-					handleMergeConflict(ctx)
-				} else {
-					os.Exit(1)
-				}
-			} else {
-				informUserToAmendAndPush()
-			}
+			return handlePushRejected(ctx)
 		}
 	}
 
 	if flags.fastCommit {
-		isDirty := utils.IsDirty().Unwrap()
-		if !isDirty {
-			return nil
-		}
+		return runFastCommit(ctx, flags)
+	}
+	return runNormalCommit(ctx, flags, params)
+}
 
-		preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Unwrap())
-		prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
-		msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
-
-		msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
-			Message:      "git message(update or enter):",
-			InitialValue: msg,
-			DefaultValue: msg,
-			Placeholder:  "update or enter",
-		}))
-
-		if msg == "" {
-			return nil
-		}
-
-		repoRoot := mustRepoRoot()
-		repoCfg, _ := repoconfig.Load(repoRoot)
-		if err := enforceRepoPolicy(repoCfg, currentBranch(), msg, flags.skipPolicy); err != nil {
-			return err
-		}
-		warnRepoPolicy(repoCfg, currentBranch(), msg)
-
-		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
-		res := utils.ShellExecOutput(ctx, "git", "status").Unwrap()
-
-		if err := runPreCommitCheck(ctx, mustRepoRoot(), flags.skipCheck); err != nil {
-			return err
-		}
-
-		if !flags.amend {
-			assert.Must(utils.ShellExec(ctx, "git", "commit", "-m", strconv.Quote(msg)))
-		} else {
-			if strings.Contains(preMsg, prefixMsg) && !strings.Contains(res, `(use "git commit" to conclude merge)`) {
-				assert.Must(utils.ShellExec(ctx, "git", "commit", "--amend", "--no-edit", "-m", strconv.Quote(msg)))
-			} else {
-				assert.Must(utils.ShellExec(ctx, "git", "commit", "-m", strconv.Quote(msg)))
-			}
-		}
-
-		if err := ensurePushPolicy(mustRepoRoot(), utils.GetBranchName(), flags.overridePolicy); err != nil {
-			return err
-		}
-		res = utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
-		if shouldPullDueToRemoteUpdate(res) {
-			err := gitPull()
-			if err != nil {
-				if gitconflict.HasConflicts(ctx, "") {
-					handleMergeConflict(ctx)
-				} else {
-					os.Exit(1)
-				}
-			} else {
-				informUserToAmendAndPush()
-			}
-		}
+func runFastCommit(ctx context.Context, flags *flagOptions) error {
+	isDirty := utils.IsDirty().Unwrap()
+	if !isDirty {
 		return nil
 	}
 
+	preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Unwrap())
 	prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
-	targetCommit := getFirstNonPrefixCommit(ctx, prefixMsg)
+	msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
 
-	if targetCommit != "" {
-		assert.Must(utils.ShellExec(ctx, "git", "reset", "--soft", targetCommit))
+	msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+		Message:      "git message(update or enter):",
+		InitialValue: msg,
+		DefaultValue: msg,
+		Placeholder:  "update or enter",
+	}))
+	if msg == "" {
+		return nil
+	}
+
+	repoRoot := mustRepoRoot()
+	repoCfg, _ := repoconfig.Load(repoRoot)
+	if err := enforceRepoPolicy(repoCfg, currentBranch(), msg, flags.skipPolicy); err != nil {
+		return err
+	}
+	warnRepoPolicy(repoCfg, currentBranch(), msg)
+
+	assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
+	status := utils.ShellExecOutput(ctx, "git", "status").Unwrap()
+
+	if err := runPreCommitCheck(ctx, repoRoot, flags.skipCheck); err != nil {
+		return err
+	}
+
+	if flags.amend && strings.Contains(preMsg, prefixMsg) && !strings.Contains(status, `(use "git commit" to conclude merge)`) {
+		if err := utils.GitCommit(ctx, msg, "--amend"); err != nil {
+			return err
+		}
 	} else {
-		commitsToSquash := getCommitsToSquash(ctx, prefixMsg)
-		if len(commitsToSquash) > 0 {
-			parentCommit := getParentCommit(ctx, commitsToSquash[0])
-			if parentCommit != "" {
-				assert.Must(utils.ShellExec(ctx, "git", "reset", "--soft", parentCommit))
-			} else {
-				assert.Must(utils.ShellExec(ctx, "git", "reset", "--soft", "HEAD~"+strconv.Itoa(len(commitsToSquash))))
-			}
+		if err := utils.GitCommit(ctx, msg); err != nil {
+			return err
 		}
 	}
 
-	// Stage tracked modifications/deletions and new untracked files (respects .gitignore).
-	// Previously used `git add --update`, which silently skipped new files.
+	if err := ensurePushPolicy(repoRoot, utils.GetBranchName(), flags.overridePolicy); err != nil {
+		return err
+	}
+	pushOut := utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+	if shouldPullDueToRemoteUpdate(pushOut) {
+		return handlePushRejected(ctx)
+	}
+	return nil
+}
+
+func runNormalCommit(ctx context.Context, flags *flagOptions, params cmdParams) error {
+	// Stage first, check, then AI — soft-reset squash happens only after checks succeed.
 	if utils.IsDirty().Unwrap() {
 		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
 	}
@@ -192,14 +161,56 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 	}
 
 	useCandidates := shouldUseCandidates(flags, repoCfg, params)
-	var msg string
+	msg, err := pickCommitMessage(ctx, aiCtx, params, flags, useCandidates, generatePrompt, aiDiff, diffResult.Diff, s)
+	if err != nil {
+		return err
+	}
+	if msg == "" {
+		return nil
+	}
+
+	if err := enforceRepoPolicy(repoCfg, currentBranch(), msg, flags.skipPolicy); err != nil {
+		return err
+	}
+	warnRepoPolicy(repoCfg, currentBranch(), msg)
+
+	if err := squashQuickUpdates(ctx); err != nil {
+		return err
+	}
+	if utils.IsDirty().Unwrap() {
+		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
+	}
+
+	if err := utils.GitCommit(ctx, msg); err != nil {
+		return err
+	}
+	if err := ensurePushPolicy(repoRoot, utils.GetBranchName(), flags.overridePolicy); err != nil {
+		return err
+	}
+	utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+	if flags.showPrompt && !useCandidates {
+		fmt.Println("\n" + generatePrompt + "\n")
+	}
+	log.Info().Str("message", msg).Bool("candidates", useCandidates).Msg("commit message generated")
+	workflow.PrintRecommendations(os.Stdout, "commit")
+	return nil
+}
+
+func pickCommitMessage(
+	ctx, aiCtx context.Context,
+	params cmdParams,
+	flags *flagOptions,
+	useCandidates bool,
+	generatePrompt, aiDiff, fullDiff string,
+	s *spinner.Spinner,
+) (string, error) {
 	if useCandidates {
 		candidates, err := aiprovider.GenerateCommitCandidates(aiCtx, params.AI, aiDiff)
 		s.Stop()
 		if err != nil {
 			log.Warn().Err(err).Msg("AI candidates failed or timed out; using rule-based options")
 		}
-		if hint := aiprovider.BreakingChangeHint(diffResult.Diff); hint != "" {
+		if hint := aiprovider.BreakingChangeHint(fullDiff); hint != "" {
 			log.Warn().Msg(hint)
 			fmt.Println(hint)
 		}
@@ -212,69 +223,80 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 			})
 		}
 		if len(options) == 0 {
-			return nil
+			return "", nil
 		}
 		selected := tap.Select[string](ctx, tap.SelectOptions[string]{
 			Message: "Pick a commit message:",
 			Options: options,
 		})
-		msg = strings.TrimSpace(selected)
-	} else {
-		aiResp, err := params.AI.Complete(aiCtx, aiprovider.CompleteRequest{
-			System: generatePrompt,
-			User:   aiDiff,
-		})
-		s.Stop()
-
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) || errors.Is(aiCtx.Err(), context.DeadlineExceeded) {
-				log.Warn().Msg("AI timed out; falling back to rule-based commit message")
-				aiResp = aiprovider.CompleteResponse{
-					Text:     aiprovider.CommitMessageFromDiff(diffResult.Diff),
-					Provider: "rule-fallback",
-					Fallback: true,
-				}
-			} else {
-				log.Err(err).Msg("failed to generate commit message")
-				return errors.WrapCaller(err)
-			}
-		}
-
-		if aiResp.Fallback {
-			log.Warn().Str("provider", aiResp.Provider).Msg("using rule-based commit message fallback (AI unavailable)")
-		}
-		if hint := aiprovider.BreakingChangeHint(diffResult.Diff); hint != "" {
-			log.Warn().Msg(hint)
-			fmt.Println(hint)
-		}
-
-		msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
-			Message:      "git message(update or enter):",
-			InitialValue: aiResp.Text,
-			DefaultValue: aiResp.Text,
-			Placeholder:  "update or enter",
-		}))
+		return strings.TrimSpace(selected), nil
 	}
-	if msg == "" {
+
+	aiResp, err := params.AI.Complete(aiCtx, aiprovider.CompleteRequest{
+		System: generatePrompt,
+		User:   aiDiff,
+	})
+	s.Stop()
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(aiCtx.Err(), context.DeadlineExceeded) {
+			log.Warn().Msg("AI timed out; falling back to rule-based commit message")
+			aiResp = aiprovider.CompleteResponse{
+				Text:     aiprovider.CommitMessageFromDiff(fullDiff),
+				Provider: "rule-fallback",
+				Fallback: true,
+			}
+		} else {
+			log.Err(err).Msg("failed to generate commit message")
+			return "", errors.WrapCaller(err)
+		}
+	}
+
+	if aiResp.Fallback {
+		log.Warn().Str("provider", aiResp.Provider).Msg("using rule-based commit message fallback (AI unavailable)")
+	}
+	if hint := aiprovider.BreakingChangeHint(fullDiff); hint != "" {
+		log.Warn().Msg(hint)
+		fmt.Println(hint)
+	}
+
+	msg := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+		Message:      "git message(update or enter):",
+		InitialValue: aiResp.Text,
+		DefaultValue: aiResp.Text,
+		Placeholder:  "update or enter",
+	}))
+	return msg, nil
+}
+
+func squashQuickUpdates(ctx context.Context) error {
+	prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
+	targetCommit := getFirstNonPrefixCommit(ctx, prefixMsg)
+	if targetCommit != "" {
+		return utils.ShellExec(ctx, "git", "reset", "--soft", targetCommit)
+	}
+
+	commitsToSquash := getCommitsToSquash(ctx, prefixMsg)
+	if len(commitsToSquash) == 0 {
 		return nil
 	}
+	parentCommit := getParentCommit(ctx, commitsToSquash[0])
+	if parentCommit != "" {
+		return utils.ShellExec(ctx, "git", "reset", "--soft", parentCommit)
+	}
+	return utils.ShellExec(ctx, "git", "reset", "--soft", "HEAD~"+fmt.Sprint(len(commitsToSquash)))
+}
 
-	if err := enforceRepoPolicy(repoCfg, currentBranch(), msg, flags.skipPolicy); err != nil {
-		return err
+func handlePushRejected(ctx context.Context) error {
+	err := gitPull()
+	if err != nil {
+		if gitconflict.HasConflicts(ctx, "") {
+			handleMergeConflict(ctx)
+			return fmt.Errorf("push rejected; resolve conflicts then retry commit/push")
+		}
+		return fmt.Errorf("push rejected and pull failed: %w", err)
 	}
-	warnRepoPolicy(repoCfg, currentBranch(), msg)
-
-	assert.Must(utils.ShellExec(ctx, "git", "commit", "-m", strconv.Quote(msg)))
-	if err := ensurePushPolicy(repoRoot, utils.GetBranchName(), flags.overridePolicy); err != nil {
-		return err
-	}
-	utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
-	if flags.showPrompt && !useCandidates {
-		fmt.Println("\n" + generatePrompt + "\n")
-	}
-	log.Info().Str("message", msg).Bool("candidates", useCandidates).Msg("commit message generated")
-	workflow.PrintRecommendations(os.Stdout, "commit")
-	return nil
+	informUserToAmendAndPush()
+	return fmt.Errorf("push rejected; pulled remote changes — amend and push again")
 }
 
 func mustRepoRoot() string {

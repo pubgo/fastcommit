@@ -365,6 +365,6 @@ func informUserToAmendAndPush() {
 	fmt.Println("    git push --force-with-lease")
 	fmt.Println("----------------------------------------")
 
-	fmt.Println("\nPress Enter after you're done...")
+	fmt.Println("\nPress Enter to continue (conflict helpers finished)...")
 	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }

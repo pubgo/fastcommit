@@ -714,6 +714,25 @@ func GitPull(ctx context.Context, args ...string) (r result.Error) {
 	return r
 }
 
+// GitCommit creates a commit with the given message without shell quoting.
+func GitCommit(ctx context.Context, message string, extraArgs ...string) error {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return fmt.Errorf("commit message is empty")
+	}
+	args := append([]string{"commit"}, extraArgs...)
+	args = append(args, "-m", message)
+	cmd := exec.CommandContext(ctx, "git", args...)
+	out, err := cmd.CombinedOutput()
+	if len(out) > 0 {
+		log.Info().Msgf("shell result: \n%s\n", strings.TrimSpace(string(out)))
+	}
+	if err != nil {
+		return fmt.Errorf("git commit failed: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func GitBranchSetUpstream(ctx context.Context, branch string) (r result.Error) {
 	ShellExecOutput(ctx, "git", "branch", "--set-upstream-to=origin/"+branch, branch).Throw(&r)
 	return r

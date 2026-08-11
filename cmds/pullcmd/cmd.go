@@ -121,6 +121,11 @@ func getUpstreamRef() (string, error) {
 }
 
 func hardSyncCurrentBranch(ctx context.Context, branch string) error {
+	if utils.IsDirty().Unwrap() {
+		log.Warn().Msg("working tree is dirty; --hard will discard local uncommitted changes")
+		fmt.Println("warning: working tree has uncommitted changes; --hard will discard them")
+	}
+
 	upstream := fmt.Sprintf("origin/%s", branch)
 	if up, err := getUpstreamRef(); err == nil && up != "" {
 		upstream = up
@@ -230,6 +235,6 @@ func informUserToAmendAndPush() {
 	fmt.Println("    git push --force-with-lease")
 	fmt.Println("----------------------------------------")
 
-	fmt.Println("\nPress Enter after you're done...")
+	fmt.Println("\nPress Enter to continue (conflict helpers finished)...")
 	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
