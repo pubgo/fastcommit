@@ -162,6 +162,8 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 		s.Prefix = "generate git message: "
 	})
 	s.Start()
+	defer s.Stop()
+
 	locale := "en"
 	maxLength := 50
 	if repoCfg.Commit.Locale != "" {
@@ -175,13 +177,27 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 		repoCfg.Commit.Types,
 	)
 
+	aiCtx, aiCancel := context.WithTimeout(ctx, 45*time.Second)
+	defer aiCancel()
+
+	aiDiff, compactStats := aiprovider.CompactDiffForAI(diffResult.Diff)
+	if compactStats.Truncated {
+		log.Warn().
+			Int("original_bytes", compactStats.OriginalBytes).
+			Int("compact_bytes", compactStats.CompactBytes).
+			Int("files", compactStats.FileCount).
+			Int("kept", compactStats.KeptFiles).
+			Int("skipped", compactStats.SkippedFiles).
+			Msg("diff too large for AI; sending abbreviated patch")
+	}
+
 	useCandidates := shouldUseCandidates(flags, repoCfg, params)
 	var msg string
 	if useCandidates {
-		candidates, err := aiprovider.GenerateCommitCandidates(ctx, params.AI, diffResult.Diff)
+		candidates, err := aiprovider.GenerateCommitCandidates(aiCtx, params.AI, aiDiff)
 		s.Stop()
 		if err != nil {
-			log.Err(err).Msg("failed to generate commit candidates")
+			log.Warn().Err(err).Msg("AI candidates failed or timed out; using rule-based options")
 		}
 		if hint := aiprovider.BreakingChangeHint(diffResult.Diff); hint != "" {
 			log.Warn().Msg(hint)
@@ -204,15 +220,24 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 		})
 		msg = strings.TrimSpace(selected)
 	} else {
-		aiResp, err := params.AI.Complete(ctx, aiprovider.CompleteRequest{
+		aiResp, err := params.AI.Complete(aiCtx, aiprovider.CompleteRequest{
 			System: generatePrompt,
-			User:   diffResult.Diff,
+			User:   aiDiff,
 		})
 		s.Stop()
 
 		if err != nil {
-			log.Err(err).Msg("failed to generate commit message")
-			return errors.WrapCaller(err)
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(aiCtx.Err(), context.DeadlineExceeded) {
+				log.Warn().Msg("AI timed out; falling back to rule-based commit message")
+				aiResp = aiprovider.CompleteResponse{
+					Text:     aiprovider.CommitMessageFromDiff(diffResult.Diff),
+					Provider: "rule-fallback",
+					Fallback: true,
+				}
+			} else {
+				log.Err(err).Msg("failed to generate commit message")
+				return errors.WrapCaller(err)
+			}
 		}
 
 		if aiResp.Fallback {

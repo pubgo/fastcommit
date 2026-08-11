@@ -27,7 +27,7 @@ func (c *Chain) Available() bool {
 			return true
 		}
 	}
-	return len(c.providers) > 0
+	return false
 }
 
 func (c *Chain) Complete(ctx context.Context, req CompleteRequest) (CompleteResponse, error) {

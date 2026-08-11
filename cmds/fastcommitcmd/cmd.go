@@ -181,17 +181,22 @@ func New() *redant.Command {
 	return app
 }
 
-// getFirstNonPrefixCommit 获取第一个没有prefixMsg的提交ID
+// getFirstNonPrefixCommit returns the first non-quick-update commit only when
+// HEAD (and consecutive newer commits) are quick-update commits that should be squashed.
+// Returns "" when there is nothing to squash (avoids a no-op `git reset --soft HEAD`).
 func getFirstNonPrefixCommit(ctx context.Context, prefixMsg string) string {
-	// 获取当前分支最近的提交列表，找到第一个不是prefixMsg开头的提交
 	branchName := utils.GetBranchName()
-	cmd := exec.CommandContext(ctx, "git", "log", branchName, "--oneline", "--pretty=format:%H %s", "-20") // 增加到20个提交以确保找到
+	cmd := exec.CommandContext(ctx, "git", "log", branchName, "--oneline", "--pretty=format:%H %s", "-20")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
+	return findSquashBase(strings.Split(strings.TrimSpace(string(output)), "\n"), prefixMsg)
+}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+// findSquashBase parses `git log --pretty=format:%H %s` lines and returns the squash base.
+func findSquashBase(lines []string, prefixMsg string) string {
+	sawPrefix := false
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -206,13 +211,15 @@ func getFirstNonPrefixCommit(ctx context.Context, prefixMsg string) string {
 		commitHash := parts[0]
 		commitMsg := parts[1]
 
-		// 如果提交消息不以prefixMsg开头，返回这个提交的hash
-		if !strings.HasPrefix(commitMsg, prefixMsg) {
+		if strings.HasPrefix(commitMsg, prefixMsg) {
+			sawPrefix = true
+			continue
+		}
+		if sawPrefix {
 			return commitHash
 		}
+		return ""
 	}
-
-	// 如果所有提交都以prefixMsg开头，返回空字符串
 	return ""
 }
 

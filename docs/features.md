@@ -54,6 +54,9 @@
 - 支持 `--amend`、`--fast`、`--candidates`、`--single`、`--skip-check`、`--skip-policy`、`--override-policy`
 - 默认三选一（`~/.config/fastgit/config.yaml` 中 `commit.candidates_default: true`；`.fastgit/commit.yaml` 可覆盖）
 - 提交前自动 `git add -A`（含新建未跟踪文件；仍尊重 `.gitignore`）
+- AI 生成有超时（约 45s），超时后回退规则消息，避免 spinner 卡死
+- 大 diff 自动压缩后再送给 AI（跳过 lock/二进制，限制体积），避免请求爆掉
+- 仅在存在 `chore: quick update` 连续提交时才 soft-reset 合并，避免无意义 `reset --soft HEAD`
 - 提交前默认运行 `check run --staged-only`（可用 `--skip-check` 跳过）
 - `.fastgit/policy.yaml` 中 `enforce: true` 时，分支名/commit message 违规将阻断提交
 - 读取 `.fastgit/commit.yaml`（locale、max_length、require_scope）

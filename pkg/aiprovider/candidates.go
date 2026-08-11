@@ -2,6 +2,7 @@ package aiprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -27,6 +28,7 @@ var candidateLinePattern = regexp.MustCompile(`^(SHORT|MEDIUM|CONVENTIONAL):\s*(
 
 // GenerateCommitCandidates asks the provider for 3 commit message options.
 func GenerateCommitCandidates(ctx context.Context, provider Provider, diff string) ([]CommitCandidate, error) {
+	diff, _ = CompactDiffForAI(diff)
 	if provider == nil || !provider.Available() {
 		return ruleCommitCandidates(diff), nil
 	}
@@ -36,6 +38,9 @@ func GenerateCommitCandidates(ctx context.Context, provider Provider, diff strin
 		User:   diff,
 	})
 	if err != nil || strings.TrimSpace(resp.Text) == "" {
+		if err != nil && (ctx.Err() == context.DeadlineExceeded || errors.Is(err, context.DeadlineExceeded)) {
+			return ruleCommitCandidates(diff), fmt.Errorf("ai timed out: %w", err)
+		}
 		return ruleCommitCandidates(diff), err
 	}
 
