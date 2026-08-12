@@ -1,7 +1,6 @@
 package fastcommitcmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -23,7 +22,7 @@ type flagOptions struct {
 	fastCommit     bool
 	amend          bool
 	candidates     bool
-	single         bool
+	edit           bool
 	skipCheck      bool
 	skipPolicy     bool
 	overridePolicy bool
@@ -44,7 +43,7 @@ func New() *redant.Command {
 
 	app := &redant.Command{
 		Use:   "commit",
-		Short: "Intelligent generation of git commit message",
+		Short: "Stage, check, generate message, commit, and push",
 		Children: []*redant.Command{
 			{
 				Use:   "ai",
@@ -67,13 +66,13 @@ func New() *redant.Command {
 					},
 					{
 						Flag:        "candidates",
-						Description: "Generate 3 commit message candidates to pick from.",
+						Description: "Interactively pick from 3 AI-generated commit messages.",
 						Value:       redant.BoolOf(&flags.candidates),
 					},
 					{
-						Flag:        "single",
-						Description: "Generate a single commit message (skip multi-candidate picker).",
-						Value:       redant.BoolOf(&flags.single),
+						Flag:        "edit",
+						Description: "Edit the generated commit message before committing.",
+						Value:       redant.BoolOf(&flags.edit),
 					},
 					{
 						Flag:        "skip-check",
@@ -131,13 +130,13 @@ func New() *redant.Command {
 			},
 			{
 				Flag:        "candidates",
-				Description: "Generate 3 commit message candidates to pick from.",
+				Description: "Interactively pick from 3 AI-generated commit messages.",
 				Value:       redant.BoolOf(&flags.candidates),
 			},
 			{
-				Flag:        "single",
-				Description: "Generate a single commit message (skip multi-candidate picker).",
-				Value:       redant.BoolOf(&flags.single),
+				Flag:        "edit",
+				Description: "Edit the generated commit message before committing.",
+				Value:       redant.BoolOf(&flags.edit),
 			},
 			{
 				Flag:        "skip-check",
@@ -364,7 +363,4 @@ func informUserToAmendAndPush() {
 	fmt.Println("    git commit --amend")
 	fmt.Println("    git push --force-with-lease")
 	fmt.Println("----------------------------------------")
-
-	fmt.Println("\nPress Enter to continue (conflict helpers finished)...")
-	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }

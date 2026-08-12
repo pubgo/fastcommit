@@ -41,6 +41,15 @@ func TestDefaultConfigHasExpectedSteps(t *testing.T) {
 	require.Equal(t, []string{"fmt", "vet", "test", "lint", "secrets"}, names)
 }
 
+func TestForCommitSkipsTestStep(t *testing.T) {
+	cfg := ForCommit(DefaultConfig())
+	names := make([]string, 0, len(cfg.Steps))
+	for _, step := range cfg.Steps {
+		names = append(names, step.Name)
+	}
+	require.Equal(t, []string{"fmt", "vet", "lint", "secrets"}, names)
+}
+
 func TestRunDryRunDoesNotFailOnOptionalMissing(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)

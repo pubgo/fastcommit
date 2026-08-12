@@ -39,7 +39,13 @@ func Run(ctx context.Context, cfg Config, opts RunOptions) ([]StepResult, error)
 
 	var results []StepResult
 	for _, step := range cfg.Steps {
+		if !opts.DryRun {
+			fmt.Fprintf(os.Stderr, "check: %s...\n", step.Name)
+		}
 		result := runStep(ctx, step, opts, stagedFiles)
+		if !opts.DryRun && result.Skipped {
+			fmt.Fprintf(os.Stderr, "check: %s skipped (%s)\n", step.Name, result.Reason)
+		}
 		results = append(results, result)
 		if result.Err != nil && !result.Skipped {
 			return results, result.Err
