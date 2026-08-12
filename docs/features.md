@@ -51,8 +51,10 @@
 
 - 提示词由 `utils.GeneratePrompt()` 统一生成
 - 默认限制提交信息风格与长度
-- 支持 `--amend`、`--fast`、`--candidates`、`--single`、`--skip-check`、`--skip-policy`、`--override-policy`
-- 默认三选一（`~/.config/fastgit/config.yaml` 中 `commit.candidates_default: true`；`.fastgit/commit.yaml` 可覆盖）
+- 支持 `--amend`、`--fast`、`--edit`、`--candidates`、`--skip-check`、`--skip-policy`、`--override-policy`
+- 默认全自动：暂存 → check → AI 生成 message → 提交 → 推送（无需交互）
+- 需要手动干预时用 `--edit` 改 message，或 `--candidates` 三选一
+- commit 前 check 为轻量流水线（fmt/vet/lint）；全量 test 请用 `fastgit check run`
 - 提交前自动 `git add -A`（含新建未跟踪文件；仍尊重 `.gitignore`）
 - AI 生成有超时（约 45s），超时后回退规则消息，避免 spinner 卡死
 - 大 diff 自动压缩后再送给 AI（跳过 lock/二进制，限制体积），避免请求爆掉
