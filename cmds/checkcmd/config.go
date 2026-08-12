@@ -115,6 +115,19 @@ func InitConfigTemplate(repoRoot string) (string, error) {
 	return path, nil
 }
 
+// ForCommit returns a lighter pipeline for the commit flow: fmt + vet + lint + secrets.
+// Full test suite remains available via `fastgit check run`.
+func ForCommit(cfg Config) Config {
+	steps := make([]Step, 0, len(cfg.Steps))
+	for _, step := range cfg.Steps {
+		if step.Name == "test" {
+			continue
+		}
+		steps = append(steps, step)
+	}
+	return Config{Steps: steps}
+}
+
 // LoadConfig loads `.fastgit/check.yaml` or returns defaults.
 func LoadConfig(repoRoot string) Config {
 	cfg := DefaultConfig()

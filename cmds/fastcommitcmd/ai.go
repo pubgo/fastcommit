@@ -29,13 +29,6 @@ func runAICommit(ctx context.Context, flags *flagOptions) error {
 
 	utils.LogConfigAndBranch()
 
-	res := utils.PreGitPush(ctx)
-	if res != "" {
-		if shouldPullDueToRemoteUpdate(res) {
-			return handlePushRejected(ctx)
-		}
-	}
-
 	if flags.fastCommit {
 		return runFastCommit(ctx, flags)
 	}
@@ -51,15 +44,16 @@ func runFastCommit(ctx context.Context, flags *flagOptions) error {
 	preMsg := strings.TrimSpace(utils.ShellExecOutput(ctx, "git", "log", "-1", "--pretty=%B").Unwrap())
 	prefixMsg := fmt.Sprintf("chore: quick update %s", utils.GetBranchName())
 	msg := fmt.Sprintf("%s at %s", prefixMsg, time.Now().Format(time.DateTime))
-
-	msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
-		Message:      "git message(update or enter):",
-		InitialValue: msg,
-		DefaultValue: msg,
-		Placeholder:  "update or enter",
-	}))
-	if msg == "" {
-		return nil
+	if flags.edit {
+		msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+			Message:      "git message(update or enter):",
+			InitialValue: msg,
+			DefaultValue: msg,
+			Placeholder:  "update or enter",
+		}))
+		if msg == "" {
+			return nil
+		}
 	}
 
 	repoRoot := mustRepoRoot()
@@ -89,21 +83,20 @@ func runFastCommit(ctx context.Context, flags *flagOptions) error {
 	if err := ensurePushPolicy(repoRoot, utils.GetBranchName(), flags.overridePolicy); err != nil {
 		return err
 	}
-	pushOut := utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
-	if shouldPullDueToRemoteUpdate(pushOut) {
-		return handlePushRejected(ctx)
-	}
-	return nil
+	fmt.Fprintln(os.Stderr, "→ pushing to remote...")
+	return finishPush(ctx)
 }
 
 func runNormalCommit(ctx context.Context, flags *flagOptions, params cmdParams) error {
 	// Stage first, check, then AI — soft-reset squash happens only after checks succeed.
+	fmt.Fprintln(os.Stderr, "→ staging changes...")
 	if utils.IsDirty().Unwrap() {
 		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
 	}
 
 	diffResult := utils.GetStagedDiff(ctx).Unwrap()
 	if diffResult == nil || len(diffResult.Files) == 0 {
+		fmt.Fprintln(os.Stderr, "→ nothing to commit")
 		return nil
 	}
 
@@ -130,6 +123,7 @@ func runNormalCommit(ctx context.Context, flags *flagOptions, params cmdParams) 
 	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 		s.Prefix = "generate git message: "
 	})
+	fmt.Fprintln(os.Stderr, "→ generating commit message (timeout ~45s)...")
 	s.Start()
 	defer s.Stop()
 
@@ -181,13 +175,18 @@ func runNormalCommit(ctx context.Context, flags *flagOptions, params cmdParams) 
 		assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
 	}
 
+	fmt.Fprintln(os.Stderr, "→ committing...")
 	if err := utils.GitCommit(ctx, msg); err != nil {
 		return err
 	}
 	if err := ensurePushPolicy(repoRoot, utils.GetBranchName(), flags.overridePolicy); err != nil {
 		return err
 	}
-	utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+	fmt.Fprintf(os.Stderr, "→ commit message: %s\n", msg)
+	fmt.Fprintln(os.Stderr, "→ pushing to remote...")
+	if err := finishPush(ctx); err != nil {
+		return err
+	}
 	if flags.showPrompt && !useCandidates {
 		fmt.Println("\n" + generatePrompt + "\n")
 	}
@@ -225,11 +224,25 @@ func pickCommitMessage(
 		if len(options) == 0 {
 			return "", nil
 		}
-		selected := tap.Select[string](ctx, tap.SelectOptions[string]{
-			Message: "Pick a commit message:",
-			Options: options,
-		})
-		return strings.TrimSpace(selected), nil
+		if flags != nil && flags.candidates {
+			fmt.Fprintln(os.Stderr, "→ pick a commit message (↑/↓ to move, Enter to confirm):")
+			selected := tap.Select[string](ctx, tap.SelectOptions[string]{
+				Message: "Pick a commit message:",
+				Options: options,
+			})
+			return strings.TrimSpace(selected), nil
+		}
+		msg := aiprovider.AutoPickCandidate(candidates)
+		fmt.Fprintf(os.Stderr, "→ commit message: %s\n", msg)
+		if flags != nil && flags.edit {
+			msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+				Message:      "git message(update or enter):",
+				InitialValue: msg,
+				DefaultValue: msg,
+				Placeholder:  "update or enter",
+			}))
+		}
+		return msg, nil
 	}
 
 	aiResp, err := params.AI.Complete(aiCtx, aiprovider.CompleteRequest{
@@ -259,13 +272,29 @@ func pickCommitMessage(
 		fmt.Println(hint)
 	}
 
-	msg := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
-		Message:      "git message(update or enter):",
-		InitialValue: aiResp.Text,
-		DefaultValue: aiResp.Text,
-		Placeholder:  "update or enter",
-	}))
+	msg := strings.TrimSpace(aiResp.Text)
+	fmt.Fprintf(os.Stderr, "→ commit message: %s\n", msg)
+	if flags != nil && flags.edit {
+		msg = strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+			Message:      "git message(update or enter):",
+			InitialValue: msg,
+			DefaultValue: msg,
+			Placeholder:  "update or enter",
+		}))
+	}
 	return msg, nil
+}
+
+func finishPush(ctx context.Context) error {
+	pushOut := utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+	if shouldPullDueToRemoteUpdate(pushOut) {
+		return handlePushRejected(ctx)
+	}
+	if strings.Contains(pushOut, "timed out") {
+		return fmt.Errorf("push failed: %s", pushOut)
+	}
+	fmt.Fprintln(os.Stderr, "→ done")
+	return nil
 }
 
 func squashQuickUpdates(ctx context.Context) error {
@@ -287,16 +316,29 @@ func squashQuickUpdates(ctx context.Context) error {
 }
 
 func handlePushRejected(ctx context.Context) error {
+	fmt.Fprintln(os.Stderr, "→ remote changed, pulling...")
 	err := gitPull()
 	if err != nil {
 		if gitconflict.HasConflicts(ctx, "") {
 			handleMergeConflict(ctx)
-			return fmt.Errorf("push rejected; resolve conflicts then retry commit/push")
+			return fmt.Errorf("push rejected; resolve conflicts then retry commit")
 		}
 		return fmt.Errorf("push rejected and pull failed: %w", err)
 	}
-	informUserToAmendAndPush()
-	return fmt.Errorf("push rejected; pulled remote changes — amend and push again")
+	if gitconflict.HasConflicts(ctx, "") {
+		handleMergeConflict(ctx)
+		return fmt.Errorf("push rejected; resolve conflicts then retry commit")
+	}
+	fmt.Fprintln(os.Stderr, "→ retrying push...")
+	pushOut := utils.GitPush(ctx, "--force-with-lease", "origin", utils.GetBranchName())
+	if shouldPullDueToRemoteUpdate(pushOut) {
+		return fmt.Errorf("push still rejected after pull; resolve manually and push again")
+	}
+	if strings.Contains(pushOut, "timed out") {
+		return fmt.Errorf("push failed after pull: %s", pushOut)
+	}
+	fmt.Fprintln(os.Stderr, "→ done")
+	return nil
 }
 
 func mustRepoRoot() string {
@@ -308,9 +350,6 @@ func mustRepoRoot() string {
 }
 
 func shouldUseCandidates(flags *flagOptions, repoCfg repoconfig.Bundle, params cmdParams) bool {
-	if flags != nil && flags.single {
-		return false
-	}
 	if flags != nil && flags.candidates {
 		return true
 	}

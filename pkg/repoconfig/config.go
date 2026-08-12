@@ -250,7 +250,7 @@ sensitive_paths:
 const defaultCommitYAML = `locale: en
 max_length: 72
 require_scope: false
-candidates_default: true
+candidates_default: false
 types:
   - feat
   - fix

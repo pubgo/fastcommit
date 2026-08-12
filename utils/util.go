@@ -168,18 +168,33 @@ func IsHelp() bool {
 	return false
 }
 
+const defaultGitPushTimeout = 2 * time.Minute
+
 func GitPush(ctx context.Context, args ...string) string {
+	pushCtx, cancel := context.WithTimeout(ctx, defaultGitPushTimeout)
+	defer cancel()
+
 	now := time.Now()
 	args = append([]string{"git", "push"}, args...)
-	output := result.Async(func() result.Result[string] { return ShellExecOutput(ctx, args...) })
+	output := result.Async(func() result.Result[string] { return ShellExecOutput(pushCtx, args...) })
 	time.Sleep(time.Millisecond * 20)
 
 	spin := spinner.New(spinner.CharSets[35], 100*time.Millisecond, func(s *spinner.Spinner) {
 		s.Prefix = strings.Join(args, " ") + ":"
 	})
 	spin.Start()
-	res := output.Await(ctx).Unwrap()
+	awaited := output.Await(pushCtx)
 	spin.Stop()
+
+	if awaited.IsErr() {
+		err := awaited.Err()
+		if errors.Is(err, context.DeadlineExceeded) || pushCtx.Err() == context.DeadlineExceeded {
+			return fmt.Sprintf("push timed out after %s", defaultGitPushTimeout)
+		}
+		return err.Error()
+	}
+
+	res := awaited.Unwrap()
 	if res != "" {
 		log.Info().Str("dur", time.Since(now).String()).Msgf("shell result: \n%s\n", res)
 	}
@@ -201,7 +216,7 @@ func ShellExec(ctx context.Context, args ...string) (err error) {
 func ShellExecOutput(ctx context.Context, args ...string) (r result.Result[string]) {
 	defer result.Recovery(&r, func(err error) error {
 		if exitErr, ok := errors.AsA[exec.ExitError](err); ok && exitErr.String() == "signal: interrupt" {
-			os.Exit(1)
+			return fmt.Errorf("signal: interrupt")
 		}
 
 		return err
