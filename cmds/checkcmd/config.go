@@ -115,9 +115,11 @@ func InitConfigTemplate(repoRoot string) (string, error) {
 	return path, nil
 }
 
-// ForCommit returns a lighter pipeline for the commit flow: fmt + vet + lint + secrets.
-// Full test suite remains available via `fastgit check run`.
-func ForCommit(cfg Config) Config {
+// ForCommit returns a lighter pipeline for the commit flow (skips test step).
+func ForCommit(cfg *Config) *Config {
+	if cfg == nil {
+		return nil
+	}
 	steps := make([]Step, 0, len(cfg.Steps))
 	for _, step := range cfg.Steps {
 		if step.Name == "test" {
@@ -125,31 +127,35 @@ func ForCommit(cfg Config) Config {
 		}
 		steps = append(steps, step)
 	}
-	return Config{Steps: steps}
+	return &Config{Steps: steps}
 }
 
-// LoadConfig loads `.fastgit/check.yaml` or returns defaults.
-func LoadConfig(repoRoot string) Config {
-	cfg := DefaultConfig()
+// ConfigPath returns the expected check config file path for a repo.
+func ConfigPath(repoRoot string) string {
+	return filepath.Join(strings.TrimSpace(repoRoot), ".fastgit", "check.yaml")
+}
+
+// LoadConfig loads `.fastgit/check.yaml`. Returns nil Config if the file does not exist.
+func LoadConfig(repoRoot string) *Config {
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
-		return cfg
+		return nil
 	}
-	configPath := filepath.Join(repoRoot, ".fastgit", "check.yaml")
+	configPath := ConfigPath(repoRoot)
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return cfg
+		return nil
 	}
 	if len(strings.TrimSpace(string(data))) == 0 {
-		return cfg
+		return nil
 	}
 
 	var file checkYAML
 	if err := yaml.Unmarshal(data, &file); err != nil {
-		return cfg
+		return nil
 	}
 	if len(file.Steps) == 0 {
-		return cfg
+		return nil
 	}
 
 	steps := make([]Step, 0, len(file.Steps))
@@ -168,7 +174,7 @@ func LoadConfig(repoRoot string) Config {
 		})
 	}
 	if len(steps) == 0 {
-		return cfg
+		return nil
 	}
-	return Config{Steps: steps}
+	return &Config{Steps: steps}
 }

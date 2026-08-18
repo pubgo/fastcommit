@@ -49,6 +49,13 @@ func newRunCommand() *redant.Command {
 			}
 
 			cfg := LoadConfig(repoRoot)
+			if cfg == nil {
+				def := DefaultConfig()
+				cfg = &def
+				_, _ = fmt.Fprintln(inv.Stderr, "no .fastgit/check.yaml found, using built-in Go defaults")
+			} else {
+				_, _ = fmt.Fprintf(inv.Stderr, "loaded check config: %s\n", ConfigPath(repoRoot))
+			}
 			opts := RunOptions{
 				StagedOnly: stagedOnly,
 				Fix:        fix,
@@ -59,7 +66,7 @@ func newRunCommand() *redant.Command {
 			if len(stagedFiles) > 0 {
 				warnSensitiveStaged(inv, repoRoot, stagedFiles)
 			}
-			results, err := Run(ctx, cfg, opts)
+			results, err := Run(ctx, *cfg, opts)
 			printResults(inv, results, dryRun, err)
 			return err
 		},
@@ -78,6 +85,12 @@ func newConfigCommand() *redant.Command {
 			}
 
 			cfg := LoadConfig(repoRoot)
+			if cfg == nil {
+				_, _ = fmt.Fprintln(inv.Stdout, "no .fastgit/check.yaml found (check is disabled)")
+				_, _ = fmt.Fprintf(inv.Stdout, "hint: create %s to enable\n", ConfigPath(repoRoot))
+				return nil
+			}
+			_, _ = fmt.Fprintf(inv.Stdout, "config: %s\n", ConfigPath(repoRoot))
 			_, _ = fmt.Fprintln(inv.Stdout, "check pipeline:")
 			for _, step := range cfg.Steps {
 				cmd := step.Command

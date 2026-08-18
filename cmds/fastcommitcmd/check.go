@@ -12,18 +12,23 @@ import (
 
 const preCommitCheckTimeout = 10 * time.Minute
 
-func runPreCommitCheck(ctx context.Context, repoRoot string, skip bool) error {
+func runPreCommitCheck(ctx context.Context, repoRoot string, skip bool, autoFix bool) error {
 	if skip {
 		return nil
 	}
 
-	fmt.Fprintln(os.Stderr, "→ running pre-commit check...")
+	cfg := checkcmd.ForCommit(checkcmd.LoadConfig(repoRoot))
+	if cfg == nil {
+		return nil
+	}
+
+	fmt.Fprintf(os.Stderr, "→ running pre-commit check (%s)...\n", checkcmd.ConfigPath(repoRoot))
 	checkCtx, cancel := context.WithTimeout(ctx, preCommitCheckTimeout)
 	defer cancel()
 
-	cfg := checkcmd.ForCommit(checkcmd.LoadConfig(repoRoot))
-	_, err := checkcmd.Run(checkCtx, cfg, checkcmd.RunOptions{
+	_, err := checkcmd.Run(checkCtx, *cfg, checkcmd.RunOptions{
 		StagedOnly: true,
+		Fix:        autoFix,
 		RepoRoot:   repoRoot,
 	})
 	if err != nil {

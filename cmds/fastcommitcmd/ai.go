@@ -66,7 +66,7 @@ func runFastCommit(ctx context.Context, flags *flagOptions) error {
 	assert.Must(utils.ShellExec(ctx, "git", "add", "-A"))
 	status := utils.ShellExecOutput(ctx, "git", "status").Unwrap()
 
-	if err := runPreCommitCheck(ctx, repoRoot, flags.skipCheck); err != nil {
+	if err := runPreCommitCheck(ctx, repoRoot, flags.skipCheck, true); err != nil {
 		return err
 	}
 
@@ -101,7 +101,7 @@ func runNormalCommit(ctx context.Context, flags *flagOptions, params cmdParams) 
 	}
 
 	repoRoot := mustRepoRoot()
-	if err := runPreCommitCheck(ctx, repoRoot, flags.skipCheck); err != nil {
+	if err := runPreCommitCheck(ctx, repoRoot, flags.skipCheck, false); err != nil {
 		return err
 	}
 

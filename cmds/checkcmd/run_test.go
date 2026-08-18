@@ -42,12 +42,22 @@ func TestDefaultConfigHasExpectedSteps(t *testing.T) {
 }
 
 func TestForCommitSkipsTestStep(t *testing.T) {
-	cfg := ForCommit(DefaultConfig())
+	d := DefaultConfig()
+	cfg := ForCommit(&d)
+	require.NotNil(t, cfg)
 	names := make([]string, 0, len(cfg.Steps))
 	for _, step := range cfg.Steps {
 		names = append(names, step.Name)
 	}
 	require.Equal(t, []string{"fmt", "vet", "lint", "secrets"}, names)
+}
+
+func TestForCommitNilReturnsNil(t *testing.T) {
+	require.Nil(t, ForCommit(nil))
+}
+
+func TestLoadConfigReturnsNilWhenMissing(t *testing.T) {
+	require.Nil(t, LoadConfig(t.TempDir()))
 }
 
 func TestRunDryRunDoesNotFailOnOptionalMissing(t *testing.T) {

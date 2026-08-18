@@ -24,6 +24,7 @@ func TestLoadConfigFromYAML(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, raw, 0o644))
 
 	cfg := LoadConfig(dir)
+	require.NotNil(t, cfg)
 	require.Len(t, cfg.Steps, 2)
 	require.Equal(t, "custom", cfg.Steps[1].Name)
 }
