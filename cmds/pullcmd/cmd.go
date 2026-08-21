@@ -72,9 +72,10 @@ func New() *redant.Command {
 				return hardSyncCurrentBranch(ctx, utils.GetBranchName())
 			}
 
-			isDirty := utils.IsDirty().Unwrap()
-			if isDirty {
-				return errors.New("working tree has uncommitted changes, use --hard to force sync or commit/stash first")
+			if utils.IsDirty().Unwrap() {
+				fmt.Fprintln(os.Stderr, "→ skip pull: working tree has uncommitted changes")
+				fmt.Fprintln(os.Stderr, "  hint: commit/stash first, or use --hard to discard local changes")
+				return nil
 			}
 
 			err := pullCurrentBranch(ctx, utils.GetBranchName())

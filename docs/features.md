@@ -60,7 +60,7 @@
 - 大 diff 自动压缩后再送给 AI（跳过 lock/二进制，限制体积），避免请求爆掉
 - 仅在存在 `chore: quick update` 连续提交时才 soft-reset 合并；且先 check/AI，再 squash，避免失败后留下半成品状态
 - `git commit -m` 走直接 exec，避免 shell 引号把带 `'`/`"` 的 message 弄坏
-- `pull --hard` 在脏工作区会明确警告将丢弃未提交改动
+- `pull` 本地有未提交改动时安静退出并提示，不报错；`--hard` 在脏工作区会明确警告将丢弃未提交改动
 - 提交前默认运行 `check run --staged-only`（可用 `--skip-check` 跳过）
 - `.fastgit/policy.yaml` 中 `enforce: true` 时，分支名/commit message 违规将阻断提交
 - 读取 `.fastgit/commit.yaml`（locale、max_length、require_scope）
