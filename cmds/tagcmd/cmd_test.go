@@ -29,3 +29,16 @@ func TestEnsureVersionAlignedMismatch(t *testing.T) {
 	err := ensureVersionAligned(verFile, tag, []*fastcommitcmd.Config{{GenVersion: true}})
 	require.Error(t, err)
 }
+
+func TestShowTagArgs(t *testing.T) {
+	t.Run("tag name builds git show args", func(t *testing.T) {
+		args, err := showTagArgs("v0.0.15")
+		require.NoError(t, err)
+		require.Equal(t, []string{"show", "v0.0.15"}, args)
+	})
+
+	t.Run("empty tag name is rejected", func(t *testing.T) {
+		_, err := showTagArgs("   ")
+		require.Error(t, err)
+	})
+}

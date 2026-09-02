@@ -10,24 +10,32 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/pubgo/dix/v2"
 	"github.com/pubgo/dix/v2/dixcontext"
+	"github.com/pubgo/fastgit/cmds/addcmd"
+	"github.com/pubgo/fastgit/cmds/branchcmd"
 	"github.com/pubgo/fastgit/cmds/checkcmd"
 	"github.com/pubgo/fastgit/cmds/chglogcmd"
 	"github.com/pubgo/fastgit/cmds/conflictcmd"
 	"github.com/pubgo/fastgit/cmds/teamcmd"
 	"github.com/pubgo/fastgit/cmds/configcmd"
 	"github.com/pubgo/fastgit/cmds/copilotcmd"
+	"github.com/pubgo/fastgit/cmds/diffcmd"
 	"github.com/pubgo/fastgit/cmds/docscmd"
 	"github.com/pubgo/fastgit/cmds/fastcommitcmd"
-	"github.com/pubgo/fastgit/cmds/ggccmd"
+	"github.com/pubgo/fastgit/cmds/fetchcmd"
 	"github.com/pubgo/fastgit/cmds/historycmd"
 	"github.com/pubgo/fastgit/cmds/initcmd"
+	"github.com/pubgo/fastgit/cmds/logcmd"
 	"github.com/pubgo/fastgit/cmds/prcmd"
 	"github.com/pubgo/fastgit/cmds/pullcmd"
 	"github.com/pubgo/fastgit/cmds/pushcmd"
+	"github.com/pubgo/fastgit/cmds/rebasecmd"
+	"github.com/pubgo/fastgit/cmds/remotecmd"
 	"github.com/pubgo/fastgit/cmds/reviewcmd"
 	"github.com/pubgo/fastgit/cmds/sshcmd"
+	"github.com/pubgo/fastgit/cmds/statuscmd"
 	"github.com/pubgo/fastgit/cmds/tagcmd"
 	"github.com/pubgo/fastgit/cmds/upgradecmd"
+	"github.com/pubgo/fastgit/cmds/uicmd"
 	"github.com/pubgo/fastgit/cmds/versioncmd"
 	"github.com/pubgo/fastgit/cmds/worktreecmd"
 	"github.com/pubgo/fastgit/pkg/aiprovider"
@@ -46,10 +54,18 @@ func Main() {
 		versioncmd.New(),
 		initcmd.New(),
 		upgradecmd.New(),
+		statuscmd.New(),
+		addcmd.New(),
+		logcmd.New(),
+		diffcmd.New(),
+		branchcmd.New(),
+		fetchcmd.New(),
+		rebasecmd.New(),
+		remotecmd.New(),
 		tagcmd.New(),
 		sshcmd.New(),
 		historycmd.New(),
-		ggccmd.New(),
+		uicmd.New(),
 		fastcommitcmd.New(),
 		checkcmd.New(),
 		conflictcmd.New(),

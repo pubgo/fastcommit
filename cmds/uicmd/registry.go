@@ -1,4 +1,4 @@
-package ggccmd
+package uicmd
 
 import (
 	"context"
@@ -159,7 +159,7 @@ func NewRegistry() *Registry {
 
 	r.Register(CommandEntry{
 		Key:         "branch checkout remote",
-		Usage:       "branch checkout remote <name>",
+		Usage:       "branch checkout-remote <name>",
 		Description: "Checkout remote branch to local",
 		Handler: func(ctx context.Context, rest []string) error {
 			if len(rest) != 1 {
@@ -236,7 +236,7 @@ func NewRegistry() *Registry {
 
 	r.Register(CommandEntry{
 		Key:         "pull rebase",
-		Usage:       "pull rebase",
+		Usage:       "pull --rebase",
 		Description: "Pull with rebase",
 		Handler: func(ctx context.Context, _ []string) error {
 			return runGitCommand(ctx, "pull", "--rebase")
@@ -259,7 +259,7 @@ func NewRegistry() *Registry {
 
 	r.Register(CommandEntry{
 		Key:         "push force",
-		Usage:       "push force",
+		Usage:       "push --force",
 		Description: "Force push current branch",
 		Handler: func(ctx context.Context, _ []string) error {
 			branch, err := utils.GetCurrentBranchV1()

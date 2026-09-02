@@ -1,4 +1,4 @@
-package ggccmd
+package uicmd
 
 import (
 	"context"
@@ -13,8 +13,8 @@ func New() *redant.Command {
 	store := NewStateStore()
 
 	return &redant.Command{
-		Use:   "ggc",
-		Short: "Unified Git command surface inspired by ggc",
+		Use:   "ui",
+		Short: "Interactive command picker with aliases and workflows",
 		Children: []*redant.Command{
 			{
 				Use:   "list",
@@ -40,7 +40,7 @@ func New() *redant.Command {
 			},
 			{
 				Use:   "path",
-				Short: "Show ggc state file path",
+				Short: "Show ggc.yaml state file path (file name unchanged)",
 				Handler: func(ctx context.Context, i *redant.Invocation) error {
 					fmt.Println(store.Path())
 					return nil
@@ -64,7 +64,7 @@ func New() *redant.Command {
 			}
 
 			if err := executeWithAliases(ctx, registry, state, parts); err != nil {
-				return fmt.Errorf("%w\nTry: fastgit ggc list\nIf this should be an alias, check: fastgit ggc path", err)
+				return fmt.Errorf("%w\nTry: fastgit ui list\nIf this should be an alias, check: fastgit ui path", err)
 			}
 
 			return nil

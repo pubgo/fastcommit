@@ -737,3 +737,18 @@ func GitBranchSetUpstream(ctx context.Context, branch string) (r result.Error) {
 	ShellExecOutput(ctx, "git", "branch", "--set-upstream-to=origin/"+branch, branch).Throw(&r)
 	return r
 }
+
+// RunGit runs git with stdout/stderr/stdin passed through so interactive
+// commands (checkout, rebase, diff pager) behave like the raw git CLI.
+func RunGit(ctx context.Context, args ...string) error {
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git %s failed: %w", strings.Join(args, " "), err)
+	}
+
+	return nil
+}

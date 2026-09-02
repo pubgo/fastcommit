@@ -22,7 +22,7 @@
 - 本地代码评审（`fastgit review *`）
 - 冲突助手（`fastgit conflict *`）
 - 团队仓库规则（`.fastgit/` + `fastgit team *`）
-- 常见 Git 工作流封装（`pull/push/tag/worktree/ggc`）
+- 常见 Git 工作流封装（`status/add/log/diff/branch/fetch/rebase/remote/pull/push/tag/worktree`）
 
 不在本项目内实现的能力：
 
@@ -74,7 +74,7 @@ flowchart TD
 
 `bootstrap.Main()` 注册当前主命令：
 
-- `version / init / upgrade / tag / ssh-login / history / ggc`
+- `version / init / upgrade / tag / ssh-login / history / ui`
 - `commit / check / review / conflict / pr / team / config / docs`
 - `pull / push / worktree / changelog / copilot`
 

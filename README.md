@@ -38,17 +38,25 @@ wails3 dev
 - `fastgit changelog draft`: 使用 Copilot 根据当前改动更新 `Unreleased.md`
 - `fastgit changelog release`: 将 `Unreleased.md` 落版为版本文件，并可同步推进 `.version/VERSION`
 - `fastgit docs init`: 初始化文档维护用的 prompt / instruction 模板
-- `fastgit pull`: 拉取当前分支（支持 `--all`）
+- `fastgit pull`: 拉取当前分支（支持 `--all` / `--rebase`）
 - `fastgit pull --hard`: 强制与远端同步（`fetch + reset --hard`）
 - `fastgit push`: 推送当前分支（支持 `--all` / `--force`）
 - `fastgit worktree`: 列出当前仓库 worktree
 - `fastgit worktree create <issue|branch> [--base <branch>]`: 创建 worktree
 - `fastgit worktree remove <issue|branch>`: 删除 worktree
 - `fastgit worktree remove --path <worktree-path>`: 按路径删除 worktree
-- `fastgit ggc list`: 查看统一命令面（ggc 风格）
-- `fastgit ggc <command ...>`: 执行统一命令，例如 `fastgit ggc status short`
-- `fastgit ggc` / `fastgit ggc interactive`: 进入交互模式（增量搜索 + workflow）
-- `fastgit ggc path`: 查看当前 `ggc.yaml` 的实际路径（按 OS/XDG 规则）
+- `fastgit status` / `fastgit status short`: 查看工作区状态
+- `fastgit add <file|.>`: 暂存文件
+- `fastgit log` / `fastgit log graph`: 查看提交记录
+- `fastgit diff [--staged|--unstaged]`: 查看改动
+- `fastgit branch current|list|checkout <name>|checkout-remote <name>|create <name>|delete <name>`: 分支操作
+- `fastgit fetch [--prune]`: 拉取远端更新
+- `fastgit rebase <upstream>` / `fastgit rebase --continue|--abort|--skip`: 变基操作
+- `fastgit remote` / `fastgit remote list`: 查看远程仓库
+- `fastgit tag show <tag>`: 查看 tag 详情
+- `fastgit ui`: 进入交互模式（fuzzy 搜索 + workflow + alias）
+- `fastgit ui list`: 查看交互命令面（含 alias）
+- `fastgit ui path`: 查看当前 `ggc.yaml` 的实际路径（按 OS/XDG 规则）
 
 ## Repo Prompt Templates
 
@@ -99,23 +107,27 @@ wails3 dev
 
 > 建议：把“生成建议”和“执行提交”区分成不同 prompt，便于在不同风险场景下选择更稳妥的工作流。
 
-## New ggc-style command surface (phase 1)
+## Git command surface
 
-- `fastgit ggc status|status short`
-- `fastgit ggc add <file|.>`
-- `fastgit ggc commit <message>`
-- `fastgit ggc log simple|graph`
-- `fastgit ggc diff|diff staged|diff unstaged`
-- `fastgit ggc branch current|list local|list remote|checkout <name>|checkout remote <name>|create <name>|delete <name>`
-- `fastgit ggc fetch|fetch prune`
-- `fastgit ggc pull current|pull rebase`
-- `fastgit ggc push current|push force`
-- `fastgit ggc rebase <upstream>|continue|abort|skip`
-- `fastgit ggc tag list|show <tag>`
-- `fastgit ggc remote list`
+常用 git 操作已摊平为顶层子命令（原 `ggc` 统一入口已拆分）：
 
-## Interactive Mode (phase 2 - MVP)
+- `fastgit status|status short`
+- `fastgit add <file|.>`
+- `fastgit log|log graph`
+- `fastgit diff [--staged|--unstaged]`
+- `fastgit branch current|list [--remote]|checkout <name>|checkout-remote <name>|create <name>|delete <name>`
+- `fastgit fetch [--prune]`
+- `fastgit pull [--all|--rebase|--hard]`
+- `fastgit push [--all|--force]`
+- `fastgit rebase <upstream>|--continue|--abort|--skip`
+- `fastgit tag list|show <tag>`
+- `fastgit remote|remote list`
 
+> 原 `fastgit ggc commit <message>` 已移除：带 message 的提交直接使用 `git commit -m`，AI 提交使用 `fastgit commit`。
+
+## Interactive Mode
+
+- 入口：`fastgit ui` 或 `fastgit ui interactive`
 - 搜索模式（默认）
 	- 输入字符：实时 fuzzy 过滤命令
 	- `↑/↓` 或 `Ctrl+N/P`：移动选中
@@ -133,12 +145,12 @@ wails3 dev
 
 > 对于带占位参数的命令（如 `<name>`），执行时会自动提示输入参数。
 
-## Phase 3: Workflow 持久化 + Alias
+## Workflow 持久化 + Alias
 
 - workflow 会持久化到：`<XDG 配置目录>/fastgit/ggc.yaml`
 	- macOS 常见为：`~/Library/Application Support/fastgit/ggc.yaml`
 	- Linux 常见为：`~/.config/fastgit/ggc.yaml`
-- 每次进入 `fastgit ggc` 交互模式会自动加载上次 workflow
+- 每次进入 `fastgit ui` 交互模式会自动加载上次 workflow
 - 在交互模式里对 workflow 的新增/删除/清空会自动保存
 
 ### Alias 配置
@@ -163,9 +175,9 @@ aliases:
 说明：
 
 - `{0}`、`{1}`... 表示位置参数
-- 例如：`fastgit ggc ci "fix typo"`
-- 例如：`fastgit ggc quick "chore: update"`
-- `fastgit ggc list` 会同时显示内置命令与 alias
+- 例如：`fastgit ui ci "fix typo"`
+- 例如：`fastgit ui quick "chore: update"`
+- `fastgit ui list` 会同时显示内置命令与 alias
 
 ## Refer
 - https://github.com/Nutlope/aicommits

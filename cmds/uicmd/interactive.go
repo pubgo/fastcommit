@@ -1,4 +1,4 @@
-package ggccmd
+package uicmd
 
 import (
 	"context"
@@ -228,7 +228,7 @@ func (m *interactiveModel) applyFilter() {
 
 func (m *interactiveModel) View() string {
 	var b strings.Builder
-	b.WriteString("ggc interactive mode\n")
+	b.WriteString("fastgit ui interactive mode\n")
 	b.WriteString("Search keys: type to filter, ↑/↓ or Ctrl+N/P, Enter execute, Tab add workflow, Ctrl+T workflow mode, Ctrl+C quit\n")
 	b.WriteString("Workflow keys: n new, d/Ctrl+D delete, c clear, x/Enter execute, Ctrl+N/P switch, Ctrl+T search mode\n\n")
 
