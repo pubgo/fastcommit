@@ -252,7 +252,7 @@ PR 正文建议固定小节，便于 review：
 - 冲突文件按目录/模块分组
 - 生成冲突原因摘要与处理建议（不自动改文件，需用户确认）
 - 一键打开冲突文件列表 + 处理清单
-- 与 `pull`、`ggc rebase` 集成
+- 与 `pull`、`rebase` 集成
 
 #### 验收标准（DoD）
 
@@ -335,7 +335,7 @@ PR 正文建议固定小节，便于 review：
 
 #### 目标
 
-在现有 `ggc` workflow 持久化基础上，增加“常用链 → 推荐下一步”。
+在现有 `ui` workflow 持久化基础上，增加“常用链 → 推荐下一步”。
 
 #### 现状
 
@@ -346,13 +346,13 @@ PR 正文建议固定小节，便于 review：
 
 - 记录命令序列频率（本地、可清除）
 - 在 TUI/交互模式下推荐下一步（如 commit 成功后提示 `push` / `pr create`）
-- 与 `ggc interactive` 集成
+- 与 `ui interactive` 集成
 
 #### 验收标准（DoD）
 
 - [x] 推荐基于真实使用频率（`workflow.yaml`）+ 默认链
 - [x] commit/pull 完成后输出 `Next:` 提示
-- [x] `ggc interactive` TUI 底部展示 workflow 推荐
+- [x] `ui interactive` TUI 底部展示 workflow 推荐
 - [x] 不发送数据到远端（本地文件）
 
 #### 当前进度

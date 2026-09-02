@@ -23,6 +23,7 @@ func New() *redant.Command {
 	var flagData = new(struct {
 		pullAll bool
 		hard    bool
+		rebase  bool
 	})
 	app := &redant.Command{
 		Use:   "pull",
@@ -37,6 +38,11 @@ func New() *redant.Command {
 				Flag:        "hard",
 				Description: "force sync current branch with remote via fetch + reset --hard",
 				Value:       redant.BoolOf(&flagData.hard),
+			},
+			{
+				Flag:        "rebase",
+				Description: "pull with rebase instead of merge",
+				Value:       redant.BoolOf(&flagData.rebase),
 			},
 		},
 		Handler: func(ctx context.Context, i *redant.Invocation) (gErr error) {
@@ -60,8 +66,8 @@ func New() *redant.Command {
 
 			utils.LogConfigAndBranch()
 
-			if flagData.pullAll && flagData.hard {
-				return errors.New("--hard cannot be used with --all")
+			if err := validatePullFlags(flagData.pullAll, flagData.hard, flagData.rebase); err != nil {
+				return err
 			}
 
 			if flagData.pullAll {
@@ -78,7 +84,7 @@ func New() *redant.Command {
 				return nil
 			}
 
-			err := pullCurrentBranch(ctx, utils.GetBranchName())
+			err := pullCurrentBranch(ctx, utils.GetBranchName(), pullExtraArgs(flagData.rebase)...)
 			if err != nil {
 				if gitconflict.HasConflicts(ctx, "") {
 					handleMergeConflict(ctx)
@@ -95,16 +101,39 @@ func New() *redant.Command {
 	return app
 }
 
-func pullCurrentBranch(ctx context.Context, branch string) error {
+func validatePullFlags(all, hard, rebase bool) error {
+	if all && hard {
+		return errors.New("--hard cannot be used with --all")
+	}
+
+	if rebase && hard {
+		return errors.New("--rebase cannot be used with --hard")
+	}
+
+	if rebase && all {
+		return errors.New("--rebase cannot be used with --all")
+	}
+
+	return nil
+}
+
+func pullExtraArgs(rebase bool) []string {
+	if rebase {
+		return []string{"--rebase"}
+	}
+	return nil
+}
+
+func pullCurrentBranch(ctx context.Context, branch string, extra ...string) error {
 	if hasUpstream() {
-		return utils.GitPull(ctx).GetErr()
+		return utils.GitPull(ctx, extra...).GetErr()
 	}
 
 	if err := utils.GitBranchSetUpstream(ctx, branch).GetErr(); err != nil {
-		return utils.GitPull(ctx, "origin", branch).GetErr()
+		return utils.GitPull(ctx, append([]string{"origin", branch}, extra...)...).GetErr()
 	}
 
-	return utils.GitPull(ctx).GetErr()
+	return utils.GitPull(ctx, extra...).GetErr()
 }
 
 func hasUpstream() bool {

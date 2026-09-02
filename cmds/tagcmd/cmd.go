@@ -59,6 +59,22 @@ func New() *redant.Command {
 					return nil
 				},
 			},
+			{
+				Use:   "show",
+				Short: "Show tag info (git show <tag>)",
+				Handler: func(ctx context.Context, i *redant.Invocation) error {
+					if len(i.Args) != 1 {
+						return fmt.Errorf("usage: tag show <tag>")
+					}
+
+					args, err := showTagArgs(i.Args[0])
+					if err != nil {
+						return err
+					}
+
+					return utils.RunGit(ctx, args...)
+				},
+			},
 		},
 		Options: []redant.Option{
 			{
@@ -239,4 +255,13 @@ func remoteTagExists(ctx context.Context, tagName string) (bool, error) {
 func localTagExists(tagName string) bool {
 	cmd := exec.Command("git", "rev-parse", "-q", "--verify", "refs/tags/"+tagName)
 	return cmd.Run() == nil
+}
+
+func showTagArgs(tag string) ([]string, error) {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return nil, fmt.Errorf("usage: tag show <tag>")
+	}
+
+	return []string{"show", tag}, nil
 }

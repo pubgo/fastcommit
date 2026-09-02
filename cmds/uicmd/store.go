@@ -1,4 +1,4 @@
-package ggccmd
+package uicmd
 
 import (
 	"os"

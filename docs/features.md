@@ -31,7 +31,7 @@
 | 推送发布     | `push`                 | 推送当前分支；保护分支策略阻断；`--override-policy` |
 | 标签发布     | `tag`                  | 生成并推送 tag，支持列表与交互选择               |
 | 工作树       | `worktree`             | 创建/删除/查看多工作树并行开发                   |
-| 统一命令面   | `ggc`                  | 统一 git 子命令 + 交互 workflow + alias          |
+| 交互命令面   | `ui`                   | fuzzy 命令选择 + workflow + alias                |
 | Copilot 集成 | `copilot`              | 会话聊天、恢复、诊断、模型/skills 管理           |
 | 自升级       | `upgrade`              | 查询并下载匹配当前 OS/ARCH 的发布版本            |
 | 其他工具     | `ssh-login`、`history` | SSH 二次认证登录、历史命令交互处理               |
@@ -186,13 +186,13 @@
 
 ---
 
-### 2.9 统一 Git 命令面（`fastgit ggc`）
+### 2.9 交互命令面（`fastgit ui`）
 
-`ggc` 提供统一命令入口与交互检索：
+原 `ggc` 统一入口已摊平为顶层子命令（`status` / `add` / `log` / `diff` / `branch` / `fetch` / `rebase` / `remote`；`pull --rebase`、`tag show` 并入现有命令）。`ui` 保留交互检索能力：
 
-- `ggc list`：查看命令面
-- `ggc interactive`：fuzzy 选择 + workflow，底部展示 `Next:` 推荐链
-- `ggc path`：查看状态文件位置
+- `ui list`：查看命令面（含 alias）
+- `ui` / `ui interactive`：fuzzy 选择 + workflow，底部展示 `Next:` 推荐链
+- `ui path`：查看状态文件位置
 
 可将多步 Git 操作沉淀成 workflow/alias，适合高频重复动作。
 
@@ -284,7 +284,7 @@
 - `pr` 命令族依赖 `gh` CLI 已安装并登录，且分支需有 upstream。
 - AI 能力不可用时，`commit`/`pr`/`review`/`conflict` 自动降级为规则版输出。
 - `upgrade` 按当前 `GOOS/GOARCH` 过滤资产，不会跨平台安装。
-- 部分命令是交互式设计（例如 `tag`、`ggc interactive`、`history`、`pr merge`），在非 TTY 下不可用。
+- 部分命令是交互式设计（例如 `tag`、`ui interactive`、`history`、`pr merge`），在非 TTY 下不可用。
 
 ---
 

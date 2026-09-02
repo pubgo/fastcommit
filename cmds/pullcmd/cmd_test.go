@@ -31,3 +31,35 @@ func TestSplitRemoteRef(t *testing.T) {
 		require.Equal(t, "feature/demo", branch)
 	})
 }
+
+func TestValidatePullFlags(t *testing.T) {
+	t.Run("no flags is valid", func(t *testing.T) {
+		require.NoError(t, validatePullFlags(false, false, false))
+	})
+
+	t.Run("rebase alone is valid", func(t *testing.T) {
+		require.NoError(t, validatePullFlags(false, false, true))
+	})
+
+	t.Run("hard with all is invalid", func(t *testing.T) {
+		require.Error(t, validatePullFlags(true, true, false))
+	})
+
+	t.Run("rebase with hard is invalid", func(t *testing.T) {
+		require.Error(t, validatePullFlags(false, true, true))
+	})
+
+	t.Run("rebase with all is invalid", func(t *testing.T) {
+		require.Error(t, validatePullFlags(true, false, true))
+	})
+}
+
+func TestPullExtraArgs(t *testing.T) {
+	t.Run("no rebase adds nothing", func(t *testing.T) {
+		require.Nil(t, pullExtraArgs(false))
+	})
+
+	t.Run("rebase adds --rebase", func(t *testing.T) {
+		require.Equal(t, []string{"--rebase"}, pullExtraArgs(true))
+	})
+}

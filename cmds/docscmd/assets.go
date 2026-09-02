@@ -116,7 +116,7 @@ agent: agent
 优先根据当前仓库模块推断 scope，例如：
 
 - {{BT}}copilot{{BT}}
-- {{BT}}ggc{{BT}}
+- {{BT}}ui{{BT}}
 - {{BT}}changelog{{BT}}
 - {{BT}}agentline{{BT}}
 - {{BT}}ssh{{BT}}
